@@ -1,0 +1,46 @@
+/* Cinematic stage: picture first, readable chrome, one accent. */
+:root{--player-ink:#f1f5f8;--player-muted:#9cabb9;--player-accent:#d5ff58;--player-surface:#111820;--player-edge:#ffffff20;--player-ease:cubic-bezier(.22,1,.36,1)}
+.player-shell{border-color:#ffffff25;border-radius:12px}
+.player-chrome{height:56px;padding:0 22px;background:linear-gradient(#060a10e8,#060a1000)}
+.player-brand{font-size:12px;letter-spacing:2px;color:var(--player-ink)}
+.player-chrome nav{gap:6px}.player-chrome button{min-width:36px;min-height:36px;font-size:14px;color:#d7e0e9;border-radius:8px}
+.player-chrome button:first-child{font-size:11px;padding-inline:12px;background:#ffffff12;border-color:var(--player-edge)}
+.player-deck{padding:42px 26px 17px;background:linear-gradient(#05091100,#050911e8 33%,#050911f8)}
+.now-playing h1{font-size:20px;line-height:1.2;color:var(--player-ink);letter-spacing:-.4px;margin-top:6px}.track-label{font-size:8px;color:var(--player-muted)}
+.favorite-button{font-size:25px;min-width:40px;min-height:40px}.seek-row{margin-top:16px;font-size:10px;color:#bdcbd5}.seek-row input{accent-color:var(--player-accent);height:4px}
+.player-buttons{margin-top:12px}.transport-buttons{gap:6px}.transport-buttons button{width:38px;height:38px;border:0;border-radius:50%;background:#ffffff0d;color:var(--player-ink)}
+.transport-buttons button.play-toggle{width:48px;height:48px;background:var(--player-accent);color:#16210b;border:0;font-size:19px;box-shadow:0 0 22px #d5ff5815}
+.transport-buttons button.enabled{background:#d5ff581c;color:var(--player-accent)}.right-controls{gap:20px}.right-controls input{width:72px;accent-color:#d2dfe6}
+.deck-status{margin-top:10px;font-size:9px;color:var(--player-muted)}.new-mix{font-size:10px;color:#bdcbd5}
+.player-chrome,.player-deck,.external-controls{transition:opacity 140ms var(--player-ease)}
+.controls-visible .player-chrome,.controls-visible .player-deck,.external-controls-visible .external-controls{transition-duration:80ms}
+.player-deck:has(.effects-menu[open]),.external-controls:has(.effects-menu[open]){opacity:1}
+.player-shell button,.effects-menu summary{touch-action:manipulation;transition:transform 140ms var(--player-ease),background-color 140ms,color 140ms}
+.player-shell button:active,.effects-menu summary:active{transform:scale(.97);transition-duration:0s}
+.player-shell :is(button,select,input,textarea,summary,a):focus-visible{outline:2px solid var(--player-accent);outline-offset:4px}
+/* Actual drawing buffers are sized in JS. No cover crop or transform scaling. */
+.performance-canvas canvas,.milkdrop-canvas canvas{position:absolute;inset:0;width:100%;height:100%;transform:none;object-fit:contain}
+.randomizer-stage{position:absolute;inset:0}.randomizer-stage>.performance-canvas{animation:effect-arrive 240ms var(--player-ease) both}
+@keyframes effect-arrive{from{opacity:0}to{opacity:1}}
+.effects-menu{position:relative;flex:0 0 auto;color:var(--player-ink);font-family:Arial,Helvetica,sans-serif}
+.effects-menu summary{list-style:none;display:flex;align-items:center;gap:9px;min-height:40px;padding:0 13px;border:1px solid var(--player-edge);border-radius:9px;cursor:pointer;font-size:12px;background:#141c27bd}
+.effects-menu summary::-webkit-details-marker{display:none}.effects-menu summary>span:first-child{font-size:18px;color:#d8e4ed}.effects-menu summary>span:last-child{color:var(--player-muted);font-size:12px}
+.effects-menu .effect-value{color:var(--player-muted);font-size:10px;padding-left:7px;border-left:1px solid var(--player-edge)}
+.effects-menu[open] summary{background:#273140;border-color:#d5ff5855}.effects-menu::details-content{transition:content-visibility 150ms allow-discrete}
+.effects-popup{position:absolute;right:0;bottom:calc(100% + 12px);z-index:60;width:300px;max-width:calc(100vw - 40px);max-height:min(440px,calc(100dvh - 190px));overflow:auto;padding:20px;border-radius:13px;background:#111923f5;border:1px solid #53627380;box-shadow:0 20px 60px #0009,inset 0 1px #ffffff0b;transform-origin:bottom right;opacity:0;transform:translateY(6px) scale(.98);transition:opacity 140ms var(--player-ease),transform 180ms var(--player-ease)}
+.effects-menu[open] .effects-popup{opacity:1;transform:translateY(0) scale(1)}
+@starting-style{.effects-menu[open] .effects-popup{opacity:0;transform:translateY(6px) scale(.98)}}
+.effects-heading{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px}.effects-heading>span{font:9px monospace;letter-spacing:1.6px;color:var(--player-accent)}.effects-heading small{color:var(--player-muted);font-size:10px}
+.effects-popup label{display:block;font-size:12px;color:var(--player-ink);margin-bottom:9px}
+.effects-popup select,.external-music .effects-popup select{display:block;width:100%;max-width:100%;height:42px;margin:0;padding:0 11px;background:#080f18;border:1px solid #405065;border-radius:7px;color:#e8eff4;font-size:12px}
+.effects-popup .effect-description{margin:10px 0 0;font-size:11px;color:var(--player-muted);line-height:1.6;letter-spacing:0}.effects-divider{height:1px;background:var(--player-edge);margin:18px 0}
+.effects-popup button.effect-remix,.external-music .effects-popup button.effect-remix{width:100%;padding:11px;margin-top:18px;color:#142009;background:var(--player-accent);border:0;border-radius:7px;font-size:12px;font-weight:600}
+.player-drawer{border-radius:12px;background:#111923;border-color:#53627380}.drawer-heading{background:#192330;padding:17px 20px}.drawer-heading h2{font-size:15px;color:var(--player-ink)}
+.external-top{padding:16px 20px}.external-top>span{font-size:10px}.external-music .external-controls button{min-height:36px;border-radius:8px}.external-music .lyric-clock button{min-height:28px}.external-bottom{padding:38px 22px 20px}.external-actions{gap:10px}
+@media(hover:hover) and (pointer:fine){.transport-buttons button:not(.play-toggle):hover{background:#ffffff20}.effects-menu summary:hover{background:#273140}}
+@media(max-width:700px){
+ .player-chrome{height:52px;padding:0 12px}.player-chrome nav{gap:1px}.player-chrome button{min-width:32px;padding:6px}.player-brand{font-size:10px;letter-spacing:1px}
+ .player-deck{padding:38px 12px 14px}.now-playing h1{font-size:17px}.player-buttons{gap:8px}.transport-buttons{gap:4px}.transport-buttons button{width:36px;height:40px;min-width:36px}.transport-buttons button.play-toggle{width:44px;height:44px}
+ .right-controls .volume-control{display:none}.effects-menu summary{padding:0 9px;gap:7px;min-height:42px;font-size:11px}.effects-menu .effect-value{display:none}.effects-popup{width:286px;padding:18px}.external-actions{gap:7px}
+}
+@media(prefers-reduced-motion:reduce){.player-shell button,.effects-menu summary,.effects-popup,.player-chrome,.player-deck,.external-controls{transition:none}.randomizer-stage>.performance-canvas{animation:none}}

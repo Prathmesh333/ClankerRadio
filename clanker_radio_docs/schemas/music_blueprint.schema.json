@@ -1,0 +1,179 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "MusicalBlueprint",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "compositionId",
+    "seed",
+    "grammar",
+    "mood",
+    "durationTargetS",
+    "tempoBpm",
+    "meter",
+    "tonalCenter",
+    "scaleOrRaga",
+    "form",
+    "instrumentRoles",
+    "motifs",
+    "sections"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "type": "string",
+      "const": "1.0"
+    },
+    "compositionId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "seed": {
+      "type": "integer"
+    },
+    "grammar": {
+      "enum": [
+        "western_tonal",
+        "indian_ambient_fusion_v0",
+        "raga_aware_reviewed"
+      ]
+    },
+    "mood": {
+      "type": "string"
+    },
+    "durationTargetS": {
+      "type": "number",
+      "minimum": 60,
+      "maximum": 3600
+    },
+    "tempoBpm": {
+      "type": "number",
+      "minimum": 30,
+      "maximum": 180
+    },
+    "meter": {
+      "type": "string",
+      "pattern": "^[0-9]+/[0-9]+$"
+    },
+    "tonalCenter": {
+      "type": "string"
+    },
+    "scaleOrRaga": {
+      "type": "string"
+    },
+    "form": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "minItems": 2
+    },
+    "instrumentRoles": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "instrumentId",
+          "role",
+          "assetLicenseId"
+        ],
+        "properties": {
+          "instrumentId": {
+            "type": "string"
+          },
+          "role": {
+            "enum": [
+              "lead",
+              "response",
+              "harmony",
+              "drone",
+              "bass",
+              "rhythm",
+              "texture"
+            ]
+          },
+          "assetLicenseId": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
+      "minItems": 1
+    },
+    "motifs": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "intervals",
+          "rhythmBeats"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "intervals": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            }
+          },
+          "rhythmBeats": {
+            "type": "array",
+            "items": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            }
+          }
+        }
+      }
+    },
+    "sections": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "startBar",
+          "endBar",
+          "function"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "startBar": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "endBar": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "function": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "harmonicPlan": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "ragaRulesAssetId": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "referencePermissionIds": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  }
+}

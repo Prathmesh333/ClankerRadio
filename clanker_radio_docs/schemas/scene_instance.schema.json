@@ -1,0 +1,88 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "SceneInstance",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "presetId",
+    "seed",
+    "startTimeS",
+    "endTimeS",
+    "paletteId",
+    "qualityTier",
+    "params",
+    "featureTimelineUri"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "type": "string",
+      "const": "1.0"
+    },
+    "presetId": {
+      "type": "string",
+      "pattern": "^V(0[1-9]|[1-4][0-9]|50)$"
+    },
+    "seed": {
+      "type": "integer"
+    },
+    "startTimeS": {
+      "type": "number",
+      "minimum": 0
+    },
+    "endTimeS": {
+      "type": "number",
+      "exclusiveMinimum": 0
+    },
+    "paletteId": {
+      "type": "string"
+    },
+    "qualityTier": {
+      "enum": [
+        "low",
+        "medium",
+        "high"
+      ]
+    },
+    "params": {
+      "type": "object",
+      "properties": {
+        "speed": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 2
+        },
+        "motionIntensity": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "reactivity": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "fogDensity": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "glowStrength": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        }
+      },
+      "additionalProperties": true
+    },
+    "featureTimelineUri": {
+      "type": "string"
+    },
+    "transitionId": {
+      "type": [
+        "string",
+        "null"
+      ]
+    }
+  }
+}

@@ -1,0 +1,6 @@
+.venv
+node_modules
+**/.next
+.data
+.git
+artifacts

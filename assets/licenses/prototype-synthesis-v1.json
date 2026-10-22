@@ -1,0 +1,12 @@
+{
+  "asset_id": "prototype-synthesis-v1",
+  "asset_type": "procedural_synth",
+  "source": "packages/audio-analysis/clanker_audio/synth.py",
+  "description": "Original additive oscillator code. No third-party sound recording, SoundFont, model weight, or sample is used.",
+  "instrument_labels": ["prototype_flute", "prototype_keys", "prototype_drone"],
+  "acoustic_authenticity": "not_claimed",
+  "commercial_use": "needs_review",
+  "reviewer": null,
+  "proof_uri": null,
+  "publication_allowed": false
+}

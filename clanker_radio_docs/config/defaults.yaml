@@ -1,0 +1,44 @@
+project:
+  name: Clanker Radio
+  timezone: Asia/Kolkata
+  defaultTargetProgramMinutes: 270
+  minApprovedMinutesBeforePublicUpload: 240
+  publishingMode: manual_review
+  allowModelGeneration: false
+music:
+  sampleRate: 48000
+  masterLufsTarget: -16.0
+  truePeakDbtpCeiling: -1.0
+  trackDurationMinutes:
+  - 3
+  - 9
+  permittedGrammars:
+  - western_tonal
+  - indian_ambient_fusion_v0
+  profiles:
+  - bansuri_dawn
+  - harmonium_rain
+  - midnight_piano
+  - forest_strings
+  - slow_tanpura
+  - lofi_acoustic_calm
+visuals:
+  libraryCount: 50
+  resolution:
+  - 1920
+  - 1080
+  fps: 30
+  renderer: webgl2
+  webgpuExperimental: true
+  segmentLengthSeconds: 20
+  scenesPerTrack:
+  - 2
+  - 5
+  allowStrobing: false
+release:
+  requireHumanApproval: true
+  requireLicenseManifest: true
+  requireAudioQuality: true
+  requireOriginalityReview: true
+  requireAIDisclosureReview: true
+  firstUploadPrivacy: private

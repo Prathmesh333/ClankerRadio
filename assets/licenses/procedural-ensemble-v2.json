@@ -1,0 +1,10 @@
+{
+  "asset_id": "procedural-ensemble-v2",
+  "asset_type": "procedural_synth",
+  "source": ["packages/music-core/clanker_music/instruments.py", "apps/web/lib/performance-player.ts"],
+  "description": "24 original oscillator patches with individual harmonic spectra, envelopes, panning, filtering, deterministic noise, and synthesized reverberation. No external samples or instrument recordings are included.",
+  "acoustic_authenticity": "not_claimed",
+  "commercial_use": "needs_review",
+  "reviewer": null,
+  "proof_uri": null
+}
