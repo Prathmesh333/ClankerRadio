@@ -1,10 +1,23 @@
 {
-  "name": "clanker-radio", "private": true, "workspaces": ["apps/web", "packages/contracts"],
+  "name": "clanker-radio",
+  "private": true,
+  "workspaces": [
+    "apps/web",
+    "packages/contracts"
+  ],
   "scripts": {
     "dev": "npm run dev --workspace @clanker/web",
     "build": "npm run build --workspace @clanker/web",
     "typecheck": "npm run typecheck --workspace @clanker/web",
     "lint": "npm run lint --workspace @clanker/web",
-    "contracts": "json2ts -i packages/contracts/schemas/music_blueprint.schema.json -o packages/contracts/blueprint.d.ts"
+    "contracts": "json2ts -i packages/contracts/schemas/music_blueprint.schema.json -o packages/contracts/blueprint.d.ts",
+    "desktop:prepare": "node scripts/build-desktop.mjs",
+    "desktop": "electron desktop/main.cjs",
+    "desktop:pack": "npm run desktop:prepare && electron-builder --config desktop/builder.json --win dir",
+    "desktop:dist": "npm run desktop:prepare && electron-builder --config desktop/builder.json --win nsis"
+  },
+  "devDependencies": {
+    "electron": "^45.0.0",
+    "electron-builder": "^26.18.0"
   }
 }

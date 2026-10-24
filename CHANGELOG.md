@@ -1,5 +1,11 @@
 # Changes
 
+## Unreleased — 24 October 2026
+
+- Add a Windows Electron app with bundled Next.js and Python runtimes, an installer, and an unpacked executable.
+- Manage local service startup/shutdown, per-launch API tokens, and a persistent desktop library.
+- Add desktop build commands, a Windows packaging workflow, and a packaged-app smoke test.
+
 ## Unreleased â€” 22 October 2026
 
 - Make real Butterchurn the initial visual engine, including before playback and with reduced motion.

@@ -1,0 +1,44 @@
+{
+  "appId": "com.clankerradio.desktop",
+  "productName": "Clanker Radio",
+  "directories": {
+    "app": "desktop",
+    "output": "dist/desktop"
+  },
+  "files": [
+    "main.cjs",
+    "package.json"
+  ],
+  "extraResources": [
+    {
+      "from": "build/desktop/web",
+      "to": "web"
+    },
+    {
+      "from": "build/desktop/web/node_modules",
+      "to": "web/node_modules"
+    },
+    {
+      "from": "build/desktop/api/clanker-api",
+      "to": "api"
+    },
+    {
+      "from": "THIRD_PARTY_NOTICES.md",
+      "to": "THIRD_PARTY_NOTICES.md"
+    }
+  ],
+  "win": {
+    "target": "nsis",
+    "signAndEditExecutable": false,
+    "artifactName": "Clanker-Radio-Setup-${version}.${ext}"
+  },
+  "nsis": {
+    "oneClick": false,
+    "perMachine": false,
+    "allowToChangeInstallationDirectory": true,
+    "createDesktopShortcut": true,
+    "deleteAppDataOnUninstall": false
+  },
+  "electronDist": "node_modules/electron/dist",
+  "npmRebuild": false
+}

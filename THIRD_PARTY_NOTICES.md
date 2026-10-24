@@ -85,3 +85,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
 PyWinRT (MIT): https://github.com/pywinrt/pywinrt . LRCLIB is accessed as a remote API (https://github.com/tranxuanthang/lrclib); its server is not bundled.
+
+## Desktop packaging
+
+The desktop edition uses Electron (MIT), electron-builder (MIT), and PyInstaller (GPL with its distribution exception for bundled applications). Electron bundles Chromium and Node.js; their shipped license files remain in the application distribution. Dependency notices in the bundled Python packages are retained. Build tools do not change the licensing of provider streams or lyric content.

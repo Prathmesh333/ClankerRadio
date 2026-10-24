@@ -13,6 +13,10 @@ A local music player that generates instrumental performances, runs Codex compos
 
 Generated music uses procedural synthesis. Codex critics assess score plans rather than listening to audio. External playback, lyric availability, and playlist clocks depend on the provider. See the [playback guide](docs/playback.md) for details.
 
+## Windows desktop app
+
+The player can run as a standalone desktop app with bundled runtimes. See the [desktop guide](docs/desktop.md) for building the installer, running the executable, and moving your library.
+
 ## Quick start
 
 Use **Python 3.13**, **Node.js 22**, and a browser with WebGL 2. Windows is the verified native setup; automatic computer-output capture uses Windows WASAPI.

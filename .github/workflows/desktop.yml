@@ -1,0 +1,23 @@
+name: Windows desktop package
+on:
+  workflow_dispatch:
+jobs:
+  package:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '22', cache: npm }
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.13' }
+      - run: python -m venv .venv
+      - run: .venv/Scripts/python -m pip install -r requirements.lock -r requirements-desktop.txt
+      - run: .venv/Scripts/python -m pip install --no-deps -e .
+      - run: npm ci
+      - run: npm run desktop:dist
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Clanker-Radio-Windows
+          path: dist/desktop/Clanker-Radio-Setup-*.exe
