@@ -15,10 +15,12 @@
     "desktop:prepare": "node scripts/build-desktop.mjs",
     "desktop": "electron desktop/main.cjs",
     "desktop:pack": "npm run desktop:prepare && electron-builder --config desktop/builder.json --win dir",
-    "desktop:dist": "npm run desktop:prepare && electron-builder --config desktop/builder.json --win nsis"
+    "desktop:dist": "npm run desktop:prepare && electron-builder --config desktop/builder.json --win nsis",
+    "branding:prepare": "node scripts/prepare-branding.mjs"
   },
   "devDependencies": {
     "electron": "^45.0.0",
-    "electron-builder": "^26.18.0"
+    "electron-builder": "^26.18.0",
+    "sharp": "0.35.5"
   }
 }

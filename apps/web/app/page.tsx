@@ -1,4 +1,5 @@
 "use client";
+import Image from "next/image";
 import { DEFAULT_SPECTRUM, type SpectrumSettings } from "../lib/spectrum-settings";
 
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -379,7 +380,7 @@ export default function Studio() {
       onFocusCapture={revealControls} onKeyDown={revealControls} onTouchStart={revealControls}>
       <header className="player-chrome">
         <span className="player-brand">
-          <i />
+          <Image src="/brand/clanker-radio.png" width={32} height={32} alt="" priority draggable={false} />
           clanker<span>radio</span>
         </span>
         <nav aria-label="Player panels">

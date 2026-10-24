@@ -47,6 +47,10 @@ with (output / "desktop.log").open("wb") as log:
             page.wait_for_url("http://127.0.0.1:*/**", timeout=90000)
             page.wait_for_load_state("domcontentloaded")
             origin = page.url.rstrip("/")
+            expect(page.locator(".player-brand img")).to_be_visible()
+            assert page.locator(".player-brand img").evaluate("e => e.complete && e.naturalWidth > 0")
+            assert page.request.get(origin + "/brand/clanker-radio.png").ok
+            assert page.request.get(origin + "/icon.ico").ok
             expect(page.locator(".milkdrop-canvas canvas")).to_be_visible(timeout=30000)
             page.get_by_role("button", name="Play performance", exact=True).click()
             expect(page.get_by_role("button", name="Pause performance", exact=True)).to_be_visible()

@@ -11,6 +11,7 @@ function run(command, args) {
   if (result.error) throw result.error;
   if (result.status !== 0) process.exit(result.status ?? 1);
 }
+run(process.execPath, ["scripts/prepare-branding.mjs"]);
 run(process.execPath, ["node_modules/next/dist/bin/next", "build", "apps/web"]);
 run(resolve(root, ".venv/Scripts/python.exe"), [
   "-m", "PyInstaller", "--noconfirm", "--onedir", "--name", "clanker-api",

@@ -8,7 +8,7 @@ The desktop edition opens the player in a dedicated Electron window. It bundles 
 
 The Windows build produces:
 
-- `dist/desktop/Clanker-Radio-Setup-0.5.4.exe`: per-user installer with an optional desktop shortcut.
+- `dist/desktop/Clanker-Radio-Setup-0.5.5.exe`: per-user installer with an optional desktop shortcut.
 - `dist/desktop/win-unpacked/Clanker Radio.exe`: runnable app folder. Keep this executable with all adjacent files and the `resources/` directory.
 
 The current build is unsigned. Windows may show an unknown-publisher prompt. Code signing is a separate release step.
@@ -73,3 +73,7 @@ If a YouTube embed fails, its error message includes the provider error code. **
 This filtering cannot promise permanent zero ads across all services, especially ads delivered inside an ordinary media stream. The browser edition cannot inherit Electron's blocker; use a browser content blocker there. See [ad-blocking research](ad-blocking.md) for the source projects and tested boundaries.
 
 Provider players and their fallback links fade out after two idle seconds with the rest of the controls. Pointer movement, touch, or keyboard focus reveals them. Playback stays mounted and continues while hidden.
+
+## Windows branding
+
+The approved robot-radio mascot supplies the player mark, browser icon, window icons, installer, and executable icon. `npm run branding:prepare` rebuilds the PNG/ICO derivatives from `assets/branding/clanker-radio.png`. Windows resource editing remains enabled with `win.signExecutable: false`, which skips signing while retaining product metadata and icon editing. The application sets `com.clankerradio.desktop` as its Windows identity. Older builds disabled all resource editing and retained Electron product metadata, so Task Manager displayed Electron. Multiple renderer/GPU processes remain expected for this architecture.

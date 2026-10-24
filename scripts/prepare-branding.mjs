@@ -1,0 +1,20 @@
+import sharp from "sharp";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { resolve } from "node:path";
+const root = resolve(import.meta.dirname, ".."), source = await readFile(resolve(root, "assets/branding/clanker-radio.png"));
+await mkdir(resolve(root, "apps/web/public/brand"), { recursive: true });
+await mkdir(resolve(root, "desktop/assets"), { recursive: true });
+await sharp(source).resize(512, 512, { fit: "contain", background: "#00000000" }).png().toFile(resolve(root, "apps/web/public/brand/clanker-radio.png"));
+const sizes = [16, 24, 32, 48, 64, 128, 256];
+const frames = await Promise.all(sizes.map(size => sharp(source).resize(size, size, { fit: "contain", background: "#00000000" }).png().toBuffer()));
+const header = Buffer.alloc(6 + sizes.length * 16); header.writeUInt16LE(1, 2); header.writeUInt16LE(sizes.length, 4);
+let offset = header.length;
+frames.forEach((frame, i) => {
+  const entry = 6 + i * 16; header[entry] = sizes[i] % 256; header[entry + 1] = sizes[i] % 256;
+  header.writeUInt16LE(1, entry + 4); header.writeUInt16LE(32, entry + 6);
+  header.writeUInt32LE(frame.length, entry + 8); header.writeUInt32LE(offset, entry + 12); offset += frame.length;
+});
+const icon = Buffer.concat([header, ...frames]);
+await writeFile(resolve(root, "desktop/assets/icon.ico"), icon);
+await writeFile(resolve(root, "apps/web/app/icon.ico"), icon);
+console.log("Prepared mascot PNG and seven-size Windows/browser icons with transparency.");

@@ -142,3 +142,6 @@ button:hover:enabled{background:var(--player-hover)}
 @media(max-width:700px){.external-music .kinetic-lyrics{inset:30% 5% 25%}.external-music .kinetic-lyrics p{font-size:clamp(24px,5.6vw,42px)!important;gap:.14em .22em}.external-music .kinetic-lyrics small{font-size:14px}}
 @media(prefers-reduced-motion:reduce){.external-music .kinetic-lyrics p span,.external-music .kinetic-lyrics p span.lit{animation:none;transition:none}}
 .external-music .lyric-still p span,.external-music .lyric-still p span.lit{animation:none;transition:none}
+
+.player-brand img{width:32px;height:32px;object-fit:contain;flex:none;filter:drop-shadow(0 2px 3px #0008)}
+@media(max-width:700px){.player-brand img{width:26px;height:26px}}

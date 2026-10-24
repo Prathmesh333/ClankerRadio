@@ -8,6 +8,7 @@ const path = require("node:path");
 const { createAdBlocker } = require("./adblock.cjs");
 const { providerURL, providerNavigation } = require("./provider-url.cjs");
 app.setName("Clanker Radio");
+if (process.platform === "win32") app.setAppUserModelId("com.clankerradio.desktop");
 nativeTheme.themeSource = "dark";
 let window, providerWindow, providerSource, adblock, api, web, quitting = false, origin;
 if (process.env.CLANKER_DESKTOP_DATA) {
@@ -46,6 +47,7 @@ function external(url) {
 }
 async function boot() {
   const resources = app.isPackaged ? process.resourcesPath : path.resolve(__dirname, "../build/desktop");
+  const iconPath = app.isPackaged ? path.join(resources, "clanker-radio.png") : path.resolve(__dirname, "../apps/web/public/brand/clanker-radio.png");
   const apiPath = app.isPackaged ? path.join(resources, "api/clanker-api.exe") : path.join(resources, "api/clanker-api/clanker-api.exe");
   const nested = path.join(resources, "web/apps/web/server.js");
   const serverPath = existsSync(nested) ? nested : path.join(resources, "web/server.js");
@@ -69,14 +71,14 @@ async function boot() {
   api.on("error", error => fail(error));
   api.on("exit", code => { if (!quitting) fail(new Error(`Music service stopped (${code}). See ${logs}`)); });
   await waitFor(`http://127.0.0.1:${apiPort}/api/health`, { "x-studio-token": token });
-  web = utilityProcess.fork(serverPath, [], { cwd: path.dirname(serverPath), stdio: "pipe",
+  web = utilityProcess.fork(serverPath, [], { cwd: path.dirname(serverPath), stdio: "pipe", serviceName: "Clanker Radio Player Service",
     env: { ...env, NODE_ENV: "production", HOSTNAME: "127.0.0.1", PORT: String(webPort), API_URL: `http://127.0.0.1:${apiPort}` } });
   web.stdout.pipe(log, { end: false }); web.stderr.pipe(log, { end: false });
   web.on("exit", code => { if (!quitting) fail(new Error(`Player service stopped (${code}). See ${logs}`)); });
   origin = `http://127.0.0.1:${webPort}`;
   await waitFor(`${origin}/api/health`);
   if (quitting) return;
-  window = new BrowserWindow({ title: "Clanker Radio", width: 1440, height: 960,
+  window = new BrowserWindow({ title: "Clanker Radio", icon: iconPath, width: 1440, height: 960,
     minWidth: 720, minHeight: 540, backgroundColor: "#080808", show: false,
     webPreferences: { preload: path.join(__dirname, "preload.cjs"), nodeIntegration: false, contextIsolation: true, sandbox: true, backgroundThrottling: false } });
   window.webContents.setWindowOpenHandler(({ url }) => { external(url); return { action: "deny" }; });
@@ -102,7 +104,7 @@ async function boot() {
       providerWindow.show(); providerWindow.focus(); return;
     }
     if (!providerWindow || providerWindow.isDestroyed()) {
-      providerWindow = new BrowserWindow({ title: "Music player · Clanker Radio", width: 1100, height: 800,
+      providerWindow = new BrowserWindow({ title: "Music player · Clanker Radio", icon: iconPath, width: 1100, height: 800,
         backgroundColor: "#080808", parent: window,
         webPreferences: { nodeIntegration: false, contextIsolation: true, sandbox: true, backgroundThrottling: false } });
       providerWindow.webContents.on("will-navigate", (event, next) => { if (!providerNavigation(next)) event.preventDefault(); });

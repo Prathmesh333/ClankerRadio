@@ -29,12 +29,17 @@
     {
       "from": "build/desktop/adblock",
       "to": "adblock"
+    },
+    {
+      "from": "apps/web/public/brand/clanker-radio.png",
+      "to": "clanker-radio.png"
     }
   ],
   "win": {
     "target": "nsis",
-    "signAndEditExecutable": false,
-    "artifactName": "Clanker-Radio-Setup-${version}.${ext}"
+    "artifactName": "Clanker-Radio-Setup-${version}.${ext}",
+    "signExecutable": false,
+    "icon": "desktop/assets/icon.ico"
   },
   "nsis": {
     "oneClick": false,
