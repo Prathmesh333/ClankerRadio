@@ -9,7 +9,7 @@ const { createAdBlocker } = require("./adblock.cjs");
 const { providerURL, providerNavigation } = require("./provider-url.cjs");
 app.setName("Clanker Radio");
 nativeTheme.themeSource = "dark";
-let window, providerWindow, adblock, api, web, quitting = false, origin;
+let window, providerWindow, providerSource, adblock, api, web, quitting = false, origin;
 if (process.env.CLANKER_DESKTOP_DATA) {
   const customData = path.resolve(process.env.CLANKER_DESKTOP_DATA);
   mkdirSync(customData, { recursive: true }); app.setPath("userData", customData);
@@ -98,6 +98,9 @@ async function boot() {
     if (event.sender !== window.webContents || event.senderFrame !== window.webContents.mainFrame || new URL(event.senderFrame.url).origin !== origin)
       throw new Error("Only the local player can open a music window.");
     const url = providerURL(link);
+    if (providerWindow && !providerWindow.isDestroyed() && providerSource === url) {
+      providerWindow.show(); providerWindow.focus(); return;
+    }
     if (!providerWindow || providerWindow.isDestroyed()) {
       providerWindow = new BrowserWindow({ title: "Music player · Clanker Radio", width: 1100, height: 800,
         backgroundColor: "#080808", parent: window,
@@ -107,7 +110,7 @@ async function boot() {
         ? { action: "allow", overrideBrowserWindowOptions: { webPreferences: { nodeIntegration: false, contextIsolation: true, sandbox: true } } }
         : { action: "deny" });
     }
-    await providerWindow.loadURL(url); providerWindow.show(); providerWindow.focus();
+    await providerWindow.loadURL(url); providerSource = url; providerWindow.show(); providerWindow.focus();
   });
   ipcMain.handle("clanker:close-music", (event) => {
     if (event.sender !== window.webContents || event.senderFrame !== window.webContents.mainFrame || new URL(event.senderFrame.url).origin !== origin)

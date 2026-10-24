@@ -6,9 +6,9 @@ import { VisualEnergyControl } from "./visual-energy-control";
 import { visualModes, type VisualMode } from "../lib/visual-modes";
 import { renderQualities, type RenderQuality } from "../lib/render-quality";
 
-export function EffectsMenu({ mode, onMode, quality, onQuality, onRemix, autoEnergy, onAutoEnergy, intensity, onIntensity, spectrum, onSpectrum, spectrumSettings, onSpectrumSettings, external = false }: {
+export function EffectsMenu({ mode, onMode, quality, onQuality, onRemix, autoEnergy, onAutoEnergy, intensity, onIntensity, spectrum, onSpectrum, spectrumSettings, onSpectrumSettings, showLyrics, onShowLyrics, external = false }: {
   mode: VisualMode; onMode(mode: VisualMode): void; quality: RenderQuality;
-  onQuality(quality: RenderQuality): void; onRemix(): void; autoEnergy: boolean; onAutoEnergy(value: boolean): void; intensity: number; onIntensity(value: number): void; spectrum: boolean; onSpectrum(value: boolean): void; spectrumSettings: SpectrumSettings; onSpectrumSettings(value: SpectrumSettings): void; external?: boolean;
+  onQuality(quality: RenderQuality): void; onRemix(): void; autoEnergy: boolean; onAutoEnergy(value: boolean): void; intensity: number; onIntensity(value: number): void; spectrum: boolean; onSpectrum(value: boolean): void; spectrumSettings: SpectrumSettings; onSpectrumSettings(value: SpectrumSettings): void; showLyrics?: boolean; onShowLyrics?(value: boolean): void; external?: boolean;
 }) {
   const root = useRef<HTMLDetailsElement>(null), id = useId();
   useEffect(() => {
@@ -35,6 +35,7 @@ export function EffectsMenu({ mode, onMode, quality, onQuality, onRemix, autoEne
       </select>
       <p className="effect-description">{quality === "uhd" ? "Renders within 3840 × 2160, keeping the screen’s proportions. Uses more GPU power." : "Matches your screen without stretching a small image."}</p>
       <div className="effects-divider" />
+      {external && onShowLyrics && <label className="check-label lyric-visibility"><input type="checkbox" checked={showLyrics ?? true} onChange={e => onShowLyrics(e.target.checked)} /> Show lyrics</label>}
       <SpectrumControls enabled={spectrum} onEnabled={onSpectrum} settings={spectrumSettings} onSettings={onSpectrumSettings} />
       <VisualEnergyControl automatic={autoEnergy} onAutomatic={onAutoEnergy} value={intensity} onValue={onIntensity} />
       <button type="button" className="effect-remix" aria-label={mode === "randomizer" ? "Next random effect" : "Remix visuals"} onClick={onRemix}>↻ {mode === "randomizer" ? "Next random effect" : "Remix visuals"}</button>

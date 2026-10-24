@@ -123,3 +123,22 @@ button:hover:enabled{background:var(--player-hover)}
 .spectrum-controls{display:flex;flex-direction:column;gap:10px;margin-bottom:20px}.spectrum-controls .check-label{font-size:12px}.spectrum-controls input[type=range]{width:100%;accent-color:var(--player-accent)}
 
 .spectrum-controls .check-label{display:flex;align-items:center;justify-content:flex-start;gap:10px;margin:0}.spectrum-controls input[type=checkbox]{width:16px;height:16px;flex:0 0 16px;accent-color:var(--player-accent)}
+
+/* Lyrics use a caption surface and ink edge instead of stacked neon extrusion. */
+.external-music .kinetic-lyrics{inset:22% 7% 24%;--lyric-ink:#b7b2aa;--lyric-active:#e1c695}
+.external-music .kinetic-lyrics p{display:flex;flex-wrap:wrap;justify-content:center;align-items:baseline;gap:.12em .24em;max-width:min(1040px,100%);padding:.24em .42em;margin:0;font-family:Bahnschrift,"Segoe UI Variable Display","Segoe UI","Nirmala UI",sans-serif;font-size:clamp(28px,4.8vw,76px)!important;font-weight:600;font-style:normal;line-height:1.26;letter-spacing:.015em;text-transform:none;transform:none;filter:none;background:#090b10b8;border:1px solid #ffffff16;border-radius:.24em;box-shadow:0 12px 35px #0005;-webkit-text-stroke:0}
+.external-music .kinetic-lyrics p span,.external-music .kinetic-lyrics p span.lit{display:inline-block;position:relative;margin:0;padding:0;color:var(--lyric-ink);background:none;box-shadow:none;text-shadow:0 2px 4px #000b;-webkit-text-stroke:1.5px #090a0de6;-webkit-text-fill-color:currentColor;paint-order:stroke fill;filter:none;transform:none;animation:lyric-caption-in 240ms ease-out both;animation-delay:calc(min(var(--word-index),8)*22ms);transition:color 160ms ease}
+.external-music .kinetic-lyrics p span.lit{color:var(--lyric-active)}
+.external-music .lyric-look-1 p{font-family:"Trebuchet MS","Segoe UI","Nirmala UI",sans-serif;font-weight:700;letter-spacing:.02em}
+.external-music .lyric-look-2 p{font-family:Georgia,"Nirmala UI",serif;font-weight:600;font-style:italic;letter-spacing:.01em}
+.external-music .lyric-look-3 p{font-family:Bahnschrift,"Arial Narrow","Nirmala UI",sans-serif;font-weight:700;letter-spacing:.035em}
+.external-music .lyric-look-4 p{font-family:Consolas,"Nirmala UI",monospace;font-weight:600;font-size:clamp(26px,4.4vw,68px)!important;letter-spacing:0}
+.external-music .lyric-look-5 p{font-family:Georgia,"Nirmala UI",serif;font-weight:700;letter-spacing:.015em}
+.external-music .kinetic-lyrics small{max-width:min(760px,95%);margin-top:18px;padding:8px 14px;font-family:"Segoe UI","Nirmala UI",sans-serif;font-size:clamp(14px,1.5vw,21px);font-weight:500;line-height:1.5;letter-spacing:.015em;text-transform:none;color:#c1bbb1;background:#090b10c9;border:1px solid #ffffff12;border-radius:8px;text-shadow:0 1px 2px #000;-webkit-text-stroke:0}
+.external-music .lyric-orbit{display:none}
+.lyric-visibility{display:flex!important;align-items:center;gap:10px;margin:0 0 20px!important;font-size:12px!important}
+.lyric-visibility input[type=checkbox]{width:16px;height:16px;flex:0 0 16px;accent-color:var(--player-accent)}
+@keyframes lyric-caption-in{from{opacity:0;translate:0 8px}to{opacity:1;translate:0 0}}
+@media(max-width:700px){.external-music .kinetic-lyrics{inset:30% 5% 25%}.external-music .kinetic-lyrics p{font-size:clamp(24px,5.6vw,42px)!important;gap:.14em .22em}.external-music .kinetic-lyrics small{font-size:14px}}
+@media(prefers-reduced-motion:reduce){.external-music .kinetic-lyrics p span,.external-music .kinetic-lyrics p span.lit{animation:none;transition:none}}
+.external-music .lyric-still p span,.external-music .lyric-still p span.lit{animation:none;transition:none}

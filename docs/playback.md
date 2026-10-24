@@ -55,3 +55,5 @@ On Windows, automatic computer-output capture uses SoundCard/WASAPI and sends PC
 **Audio spectrum bars** in Effects toggles the frequency bars along the bottom of the visuals. They read the same live audio analyzer as the themes, across generated tracks and connected external audio. They remain visible when controls hide, decay to silence when audio stops, and use gentler motion with reduced motion enabled.
 
 Spectrum settings include individual edges, top + bottom, left + right, all four sides, or a custom position with horizontal and vertical sliders. Mirror spectrum reflects frequency bars around the center. Bar height and spectrum width control the size without changing the music or other visual effects.
+
+**Show lyrics** in external Effects or Link & lyrics hides or restores the lyric overlay without stopping music, visualizers, or lyric timing. Caption styles use warm colors, dark character outlines, and spaced words for legibility against bright visuals.

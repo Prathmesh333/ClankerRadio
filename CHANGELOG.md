@@ -2,6 +2,8 @@
 
 ## Unreleased — 24 October 2026
 
+- Improve lyric typography with warm colors, clear outlines, and spaced words; add Show lyrics controls and simplify the desktop-player notice in version 0.5.4.
+
 - Add live audio spectrum bars across visual themes, with an Effects toggle and reduced-motion support.
 - Hide provider players and fallback links with idle controls, retaining playback and keyboard access; desktop version 0.5.3.
 

@@ -34,6 +34,7 @@ export function ExternalMusic({ onClose, reducedMotion, spectrum, onSpectrum, sp
   const [link, setLink] = useState("");
   const [source, setSource] = useState<MusicSource | null>(null);
   const [editing, setEditing] = useState(true);
+  const [showLyrics, setShowLyrics] = useState(true);
   const [lyrics, setLyrics] = useState("");
   const [automatic, setAutomatic] = useState(true);
   const [lyricStatus, setLyricStatus] = useState("Automatic lyrics enabled");
@@ -265,24 +266,25 @@ export function ExternalMusic({ onClose, reducedMotion, spectrum, onSpectrum, sp
       <span>{source?.provider ?? "Music links"} · {reactive ? "Audio connected" : "Ambient visuals"}</span>
       <button onClick={() => setEditing(true)}>Link & lyrics</button>
     </div>
-    <div className={`kinetic-lyrics lyric-look-${look % 6} ${reducedMotion ? "lyric-still" : ""}`} key={`${index}-${designSeed}`} style={{ "--lyric-hue": look % 360, "--lyric-tilt": `${(look % 9) - 4}deg` } as CSSProperties}>
+    {showLyrics && <div className={`kinetic-lyrics lyric-look-${look % 6} ${reducedMotion ? "lyric-still" : ""}`} key={`${index}-${designSeed}`} style={{ "--lyric-hue": look % 360, "--lyric-tilt": `${(look % 9) - 4}deg` } as CSSProperties}>
       <div className="lyric-orbit" aria-hidden="true" />
       <p aria-live="off">{words.map((word, i) => <span key={i} className={i <= Math.floor(progress * words.length) ? "lit" : ""} style={{ "--word-index": i } as CSSProperties}>{word}{" "}</span>)}</p>
       {next && <small>{next.text}</small>}
-    </div>
+    </div>}
     {source && <div onMouseEnter={() => { providerHover.current = true; reveal(); }} onMouseLeave={() => { providerHover.current = false; reveal(); }} className={`provider-player provider-${source.provider.toLowerCase().replace(/ /g, "-")}`}>
-      {nativePlayer ? <p className="provider-native-note">Playback is in the desktop music window.</p> : source.provider === "YouTube" ? <div ref={youtubeHost} /> : source.provider === "Spotify" ? <div ref={spotifyHost} /> : source.embed ? <iframe ref={providerFrame} key={source.embed} title={`${source.provider} music player`} src={source.embed} allow="autoplay; encrypted-media; fullscreen; picture-in-picture" allowFullScreen referrerPolicy="strict-origin-when-cross-origin" /> : <audio key={source.url} ref={media} src={source.url} crossOrigin="anonymous" controls onPlay={() => void connectDirect()} onError={() => setError("This audio URL cannot play here. Check the URL and its cross-origin permissions, or play it in another tab and share that tab’s audio.")} />}
-      {desktopAvailable && source.provider === "YouTube" && <button className="desktop-provider-button" onClick={() => {
+      {nativePlayer ? <p className="provider-native-note">Playing in desktop player</p> : source.provider === "YouTube" ? <div ref={youtubeHost} /> : source.provider === "Spotify" ? <div ref={spotifyHost} /> : source.embed ? <iframe ref={providerFrame} key={source.embed} title={`${source.provider} music player`} src={source.embed} allow="autoplay; encrypted-media; fullscreen; picture-in-picture" allowFullScreen referrerPolicy="strict-origin-when-cross-origin" /> : <audio key={source.url} ref={media} src={source.url} crossOrigin="anonymous" controls onPlay={() => void connectDirect()} onError={() => setError("This audio URL cannot play here. Check the URL and its cross-origin permissions, or play it in another tab and share that tab’s audio.")} />}
+      {desktopAvailable && source.provider === "YouTube" && <button className="desktop-provider-button" onClick={event => {
+        if (event.detail > 0) event.currentTarget.blur();
         setNativePlayer(true); setSynced(false);
         void window.clankerDesktop?.openMusic(source.url).then(() => { setError(""); })
           .catch(error => { setNativePlayer(false); setError(error.message); });
-      }}>Open desktop player ↗</button>}
+      }}>{nativePlayer ? "Show desktop player ↗" : "Open desktop player ↗"}</button>}
       <a href={source.url} target="_blank" rel="noreferrer">Open on {source.provider} ↗</a>
     </div>}
     <div className="external-bottom external-controls">
       <div className="external-actions">
         {source?.provider !== "Audio link" && <button onClick={() => void (reactive ? (setComputerAudio(false), disconnect()) : capture())}>{reactive ? "Disconnect audio" : "Share tab audio"}</button>}
-        <EffectsMenu spectrumSettings={spectrumSettings} onSpectrumSettings={onSpectrumSettings} spectrum={spectrum} onSpectrum={onSpectrum} autoEnergy={autoEnergy} onAutoEnergy={onAutoEnergy} intensity={intensity} onIntensity={onIntensity} external mode={mode} onMode={setMode} quality={quality} onQuality={setQuality} onRemix={() => {
+        <EffectsMenu showLyrics={showLyrics} onShowLyrics={setShowLyrics} spectrumSettings={spectrumSettings} onSpectrumSettings={onSpectrumSettings} spectrum={spectrum} onSpectrum={onSpectrum} autoEnergy={autoEnergy} onAutoEnergy={onAutoEnergy} intensity={intensity} onIntensity={onIntensity} external mode={mode} onMode={setMode} quality={quality} onQuality={setQuality} onRemix={() => {
           if (mode === "randomizer") window.dispatchEvent(new Event("visualizer:next"));
               else if (mode === "random") window.dispatchEvent(new Event("visualizer:preset-next"));
           else setDesignSeed(n => (n + 1) >>> 0);
@@ -306,6 +308,7 @@ export function ExternalMusic({ onClose, reducedMotion, spectrum, onSpectrum, sp
           <p>Use the embedded player for playback and playlists. Connect shared tab audio for reactive visuals. Some services offer previews or require sign-in.</p>
           <label className="check-label"><input type="checkbox" checked={computerAudio} onChange={e => setComputerAudio(e.target.checked)} /> Connect Windows computer audio automatically</label>
           <p>Reads this computer’s output locally for visuals. No microphone or audio files. Turn it off to use browser tab sharing instead.</p>
+          <label className="check-label"><input type="checkbox" checked={showLyrics} onChange={e => setShowLyrics(e.target.checked)} /> Show lyrics</label>
           <label className="check-label"><input type="checkbox" checked={automatic} onChange={e => setAutomatic(e.target.checked)} /> Find lyrics automatically</label>
           <p>{lyricStatus}</p>
           <details className="lyric-corrections"><summary>Optional lyric corrections</summary>
