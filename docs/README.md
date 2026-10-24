@@ -6,6 +6,7 @@ These guides describe the current local player. Start with the [repository READM
 - [Playback and recording](playback.md): player controls, effects, music links, automatic lyrics, Codex competitions, and endless radio.
 - [Development](development.md): service commands, configuration, verification, and troubleshooting.
 - [Architecture](architecture.md): code map, audio and visual data flow, persistence, and boundaries.
+- [Ad-blocking research](ad-blocking.md): source projects, desktop filters, and verification boundaries.
 - [Changelog](../CHANGELOG.md): changes over time.
 - [Third-party notices](../THIRD_PARTY_NOTICES.md): attribution and dependency licenses.
 

@@ -8,14 +8,14 @@ A local music player that generates instrumental performances, runs Codex compos
 - Uses real Codex CLI calls for two competing composers, three rounds of peer criticism and revision, and an independent judge.
 - Keeps favorites and approved winners in a playlist, with symbolic duplicate detection and JSON downloads.
 - Defaults to real **Butterchurn / MilkDrop**, with 367 unique presets. Includes Three.js scenes, kinetic lyrics, and a Randomizer that changes effects every 28 seconds.
-- Offers display-sharp, UHD, and performance rendering without cropping the frame. Playback controls hide when idle.
+- Offers display-sharp, UHD, and performance rendering without cropping the frame. Playback controls hide when idle. Automatic visual energy varies every theme, including MilkDrop.
 - Plays supported music links through provider embeds, looks up lyrics automatically, and connects their audio to the visuals.
 
 Generated music uses procedural synthesis. Codex critics assess score plans rather than listening to audio. External playback, lyric availability, and playlist clocks depend on the provider. See the [playback guide](docs/playback.md) for details.
 
 ## Windows desktop app
 
-The player can run as a standalone desktop app with bundled runtimes. See the [desktop guide](docs/desktop.md) for building the installer, running the executable, and moving your library.
+The player can run as a standalone desktop app with bundled runtimes, default ad blocking, and a separate YouTube player fallback. See the [ad-blocking research](docs/ad-blocking.md) for implementation and limits. See the [desktop guide](docs/desktop.md) for building the installer, running the executable, and moving your library.
 
 ## Quick start
 

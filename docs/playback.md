@@ -12,6 +12,8 @@ The Obsidian interface uses smoked black-glass panels, charcoal surfaces, and si
 
 ## Effects and picture quality
 
+Auto visual energy is on by default in every engine, including MilkDrop. Effects and Sound settings can switch it to a fixed slider. Automatic variation is smooth, and Gentle motion takes priority.
+
 **Butterchurn · MilkDrop** is the default. It runs the actual Butterchurn engine before and during playback; it does not substitute the Alchemy shader. Its 367 unique presets shuffle without consecutive repeats and blend during playback. Before a music source exists, the engine renders a silent preview.
 
 The menu also includes original shader themes and Three.js geometry, particles, luminous surfaces, fractal backgrounds, and bloom. **Randomizer · all effects** changes the selected engine every 28 seconds. **Next random effect** advances it immediately; **Remix visuals** changes a preset or scene variation.

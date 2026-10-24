@@ -1,11 +1,12 @@
 "use client";
 import { useEffect, useId, useRef } from "react";
+import { VisualEnergyControl } from "./visual-energy-control";
 import { visualModes, type VisualMode } from "../lib/visual-modes";
 import { renderQualities, type RenderQuality } from "../lib/render-quality";
 
-export function EffectsMenu({ mode, onMode, quality, onQuality, onRemix, external = false }: {
+export function EffectsMenu({ mode, onMode, quality, onQuality, onRemix, autoEnergy, onAutoEnergy, intensity, onIntensity, external = false }: {
   mode: VisualMode; onMode(mode: VisualMode): void; quality: RenderQuality;
-  onQuality(quality: RenderQuality): void; onRemix(): void; external?: boolean;
+  onQuality(quality: RenderQuality): void; onRemix(): void; autoEnergy: boolean; onAutoEnergy(value: boolean): void; intensity: number; onIntensity(value: number): void; external?: boolean;
 }) {
   const root = useRef<HTMLDetailsElement>(null), id = useId();
   useEffect(() => {
@@ -31,6 +32,8 @@ export function EffectsMenu({ mode, onMode, quality, onQuality, onRemix, externa
         {Object.entries(renderQualities).map(([key, label]) => <option value={key} key={key}>{label}</option>)}
       </select>
       <p className="effect-description">{quality === "uhd" ? "Renders within 3840 × 2160, keeping the screen’s proportions. Uses more GPU power." : "Matches your screen without stretching a small image."}</p>
+      <div className="effects-divider" />
+      <VisualEnergyControl automatic={autoEnergy} onAutomatic={onAutoEnergy} value={intensity} onValue={onIntensity} />
       <button type="button" className="effect-remix" aria-label={mode === "randomizer" ? "Next random effect" : "Remix visuals"} onClick={onRemix}>↻ {mode === "randomizer" ? "Next random effect" : "Remix visuals"}</button>
     </div>
   </details>;

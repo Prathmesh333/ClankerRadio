@@ -16,3 +16,16 @@ test("LRC supports fractional and repeated timestamps, metadata, and plain timin
   assert.deepEqual(parseLyrics("[ar:Artist]\n[00:04.50][01:02.03]First line\n[00:01.00]Opening"), { timed:true, cues:[{time:1,text:"Opening"},{time:4.5,text:"First line"},{time:62.03,text:"First line"}] });
   assert.deepEqual(parseLyrics("One\n\nTwo", 3), {timed:false,cues:[{time:0,text:"One"},{time:3,text:"Two"}]});
 });
+
+
+test("YouTube Music playlist embeds carry the local origin and specific playback errors", async () => {
+  const { youtubeEmbedURL, youtubePlaybackError } = await import("../apps/web/lib/music-source.ts");
+  const source = parseMusicSource("https://music.youtube.com/playlist?list=PLKBOD9JXe71Y&si=ps8pFHBWF0CUi6yU");
+  const embed = new URL(youtubeEmbedURL(source.embed, "http://127.0.0.1:54321"));
+  assert.equal(embed.searchParams.get("list"), "PLKBOD9JXe71Y");
+  assert.equal(embed.searchParams.get("origin"), "http://127.0.0.1:54321");
+  assert.equal(embed.searchParams.get("widget_referrer"), "http://127.0.0.1:54321/");
+  assert.match(youtubePlaybackError(153), /origin or referrer/);
+  assert.match(youtubePlaybackError(150), /owner does not allow/);
+  assert.match(youtubePlaybackError(100), /private/);
+});

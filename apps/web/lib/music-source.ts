@@ -45,3 +45,22 @@ export function parseLyrics(text: string, lineSeconds = 4): { cues: LyricCue[]; 
   }
   return { cues: cues.sort((a, b) => a.time - b.time), timed };
 }
+
+/** Bind API messages and the HTTP referrer to the actual local player origin. */
+export function youtubeEmbedURL(embed: string, origin: string): string {
+  const url = new URL(embed);
+  url.searchParams.set("origin", new URL(origin).origin);
+  url.searchParams.set("widget_referrer", new URL(origin).origin + "/");
+  return url.href;
+}
+export function youtubePlaybackError(code: number): string {
+  const errors: Record<number, string> = {
+    2: "YouTube rejected the video or playlist parameters.",
+    5: "YouTube could not play this format in the embedded player.",
+    100: "This YouTube item is unavailable, removed, or private.",
+    101: "The owner does not allow this item to play in an embedded player.",
+    150: "The owner does not allow this item to play in an embedded player.",
+    153: "YouTube rejected the embedded player's origin or referrer.",
+  };
+  return `${errors[code] ?? "YouTube could not load this playlist item."} (YouTube ${code || "unknown"}) Open the desktop player or watch on YouTube.`;
+}

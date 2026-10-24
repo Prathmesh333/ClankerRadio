@@ -6,7 +6,7 @@
     "output": "dist/desktop"
   },
   "files": [
-    "main.cjs",
+    "*.cjs",
     "package.json"
   ],
   "extraResources": [
@@ -25,6 +25,10 @@
     {
       "from": "THIRD_PARTY_NOTICES.md",
       "to": "THIRD_PARTY_NOTICES.md"
+    },
+    {
+      "from": "build/desktop/adblock",
+      "to": "adblock"
     }
   ],
   "win": {

@@ -1,25 +1,28 @@
 "use client";
 import { useEffect, useRef, useState, type RefObject } from "react";
 import { gpuFrameGate } from "../lib/gpu-frame-gate";
+import type { VisualEnergy } from "../lib/visual-energy";
 import type { VisualAudio } from "../lib/visual-audio";
 import { renderSize, DEFAULT_RENDER_QUALITY, type RenderQuality } from "../lib/render-quality";
 import type { Visualizer } from "butterchurn";
 
 // Butterchurn / MilkDrop: FFT-driven preset equations and feedback-frame warping.
-export function MilkdropVisual({ player, reducedMotion, intensity, quality = DEFAULT_RENDER_QUALITY }: { player: RefObject<VisualAudio | null>; reducedMotion: boolean; intensity: number; quality?: RenderQuality }) {
+export function MilkdropVisual({ player, reducedMotion, intensity, autoEnergy = true, energy, quality = DEFAULT_RENDER_QUALITY }: { player: RefObject<VisualAudio | null>; reducedMotion: boolean; intensity: number; autoEnergy?: boolean; energy?: VisualEnergy; quality?: RenderQuality }) {
   const [source, setSource] = useState<VisualAudio | null>(null);
   useEffect(() => {
     const sync = () => setSource(player.current);
     sync(); const timer = setInterval(sync, 250);
     return () => clearInterval(timer);
   }, [player]);
+  const settings = useRef({ intensity, autoEnergy, energy });
+  useEffect(() => { settings.current = { intensity, autoEnergy, energy }; }, [intensity, autoEnergy, energy]);
   const host = useRef<HTMLDivElement>(null);
   const qualityRef = useRef(quality), resizeRef = useRef<() => void>(() => {});
   useEffect(() => { qualityRef.current = quality; resizeRef.current(); }, [quality]);
   useEffect(() => {
     const element = host.current;
     if (!element) return;
-    let idleContext: AudioContext | null = null;
+    let idleContext: AudioContext | null = null, visualGain: GainNode | null = null;
     let starting = false, cancelled = false, frame = 0, current: VisualAudio | null = null;
     let visualizer: Visualizer | null = null, canvas: HTMLCanvasElement | null = null;
     let observer: ResizeObserver | null = null, nextChange = 0, previous = "";
@@ -30,7 +33,7 @@ export function MilkdropVisual({ player, reducedMotion, intensity, quality = DEF
       previous = choices[Math.floor(Math.random() * choices.length)] ?? names[0];
       visualizer?.loadPreset(presets[previous], nextChange ? 3.5 : 0);
       element.dataset.preset = previous;
-      nextChange = performance.now() + (18000 + Math.random() * 22000) / Math.max(.5, intensity);
+      nextChange = performance.now() + (18000 + Math.random() * 22000) / Math.max(.5, settings.current.energy?.value ?? settings.current.intensity);
     };
     const nextPreset = () => { if (visualizer && names.length) change(); };
     window.addEventListener("visualizer:preset-next", nextPreset);
@@ -49,7 +52,11 @@ export function MilkdropVisual({ player, reducedMotion, intensity, quality = DEF
         gate = gpuFrameGate(canvas.getContext("webgl2")!);
         presets = { ...pack.default.getPresets(), ...extra.default.getPresets(), ...extra2.default.getPresets() }; names = Object.keys(presets);
         element.dataset.presetCount = String(names.length);
-        if (current) visualizer.connectAudio(current.analyser);
+        if (current) {
+          visualGain = current.context.createGain();
+          current.analyser.connect(visualGain);
+          visualizer.connectAudio(visualGain);
+        }
         element.dataset.source = current ? "music" : "silent-preview";
         element.appendChild(canvas);
         change();
@@ -73,6 +80,10 @@ export function MilkdropVisual({ player, reducedMotion, intensity, quality = DEF
           frame = requestAnimationFrame(render);
           if (document.hidden || (reducedMotion && rendered >= 2) || !gate?.ready()) return;
           try {
+            const value = settings.current;
+            const strength = value.energy?.sample(performance.now(), value.intensity, value.autoEnergy, reducedMotion) ?? value.intensity;
+            element.dataset.energy = strength.toFixed(3);
+            if (current && visualGain) visualGain.gain.setTargetAtTime(strength / .8, current.context.currentTime, .25);
             if (!reducedMotion && performance.now() > nextChange) change();
             visualizer?.render(current ? undefined : { audioLevels: { timeByteArray: silent, timeByteArrayL: silent, timeByteArrayR: silent } }); rendered++; gate?.submitted();
           } catch (error) { element.dataset.error = String(error); canvas?.remove(); cancelAnimationFrame(frame); }
@@ -85,7 +96,7 @@ export function MilkdropVisual({ player, reducedMotion, intensity, quality = DEF
     return () => {
       cancelled = true; window.removeEventListener("visualizer:preset-next", nextPreset); clearInterval(poll); cancelAnimationFrame(frame); observer?.disconnect();
       if (current && visualizer) {
-        try { visualizer.disconnectAudio(current.analyser); }
+        try { if (visualGain) { visualizer.disconnectAudio(visualGain); current.analyser.disconnect(visualGain); visualGain.disconnect(); } }
         catch { /* The source may already have disconnected its audio graph. */ }
       }
       if (idleContext) void idleContext.close();
@@ -94,6 +105,6 @@ export function MilkdropVisual({ player, reducedMotion, intensity, quality = DEF
       canvas?.remove();
       window.removeEventListener("resize", resizeRef.current); resizeRef.current = () => {};
     };
-  }, [source, reducedMotion, intensity]);
+  }, [source, reducedMotion]);
   return <div className="milkdrop-canvas" ref={host} aria-label="Randomized MilkDrop visualization" />;
 }

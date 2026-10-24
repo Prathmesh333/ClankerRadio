@@ -29,5 +29,6 @@ const webRoot = existsSync(resolve(output, "web/apps/web/server.js"))
 cpSync(resolve(root, "apps/web/.next/static"), resolve(webRoot, ".next/static"), { recursive: true });
 if (existsSync(resolve(root, "apps/web/public")))
   cpSync(resolve(root, "apps/web/public"), resolve(webRoot, "public"), { recursive: true });
+run(process.execPath, ["scripts/prepare-adblock.mjs"]);
 run(process.execPath, ["node_modules/electron/install.js"]);
 console.log("Desktop runtimes ready. Run npm run desktop, desktop:pack, or desktop:dist.");

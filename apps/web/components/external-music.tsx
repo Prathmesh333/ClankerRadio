@@ -5,12 +5,12 @@ import { EffectsMenu } from "./effects-menu";
 import { DEFAULT_RENDER_QUALITY, type RenderQuality } from "../lib/render-quality";
 import { PerformanceVisual } from "./performance-visual";
 import { ExternalAudio } from "../lib/visual-audio";
-import { parseLyrics, parseMusicSource, type MusicSource } from "../lib/music-source";
+import { parseLyrics, parseMusicSource, youtubeEmbedURL, youtubePlaybackError, type MusicSource } from "../lib/music-source";
 import { DEFAULT_VISUAL_MODE, type VisualMode } from "../lib/visual-modes";
 
 type YouTubePlayer = { getCurrentTime(): number; getPlayerState(): number; getDuration?(): number; getVideoData(): { video_id: string; title?: string; author?: string }; destroy(): void };
 type YouTubeAPI = { Player: new (element: HTMLIFrameElement, options: object) => YouTubePlayer };
-declare global { interface Window { YT?: YouTubeAPI; onYouTubeIframeAPIReady?: () => void } }
+declare global { interface Window { clankerDesktop?: { openMusic(url: string): Promise<void>; closeMusic(): Promise<void> }; YT?: YouTubeAPI; onYouTubeIframeAPIReady?: () => void } }
 function youtubeAPI(): Promise<YouTubeAPI> {
   if (window.YT?.Player) return Promise.resolve(window.YT);
   return new Promise((resolve, reject) => {
@@ -24,7 +24,10 @@ function youtubeAPI(): Promise<YouTubeAPI> {
   });
 }
 
-export function ExternalMusic({ onClose, reducedMotion }: { onClose(): void; reducedMotion: boolean }) {
+export function ExternalMusic({ onClose, reducedMotion, autoEnergy = true, onAutoEnergy, intensity = .8, onIntensity }: { onClose(): void; reducedMotion: boolean; autoEnergy?: boolean; onAutoEnergy(value: boolean): void; intensity?: number; onIntensity(value: number): void }) {
+  const [desktopAvailable, setDesktopAvailable] = useState(false);
+  const [nativePlayer, setNativePlayer] = useState(false);
+  useEffect(() => { setDesktopAvailable(Boolean(window.clankerDesktop)); return () => { void window.clankerDesktop?.closeMusic().catch(() => {}); }; }, []);
   const [link, setLink] = useState("");
   const [source, setSource] = useState<MusicSource | null>(null);
   const [editing, setEditing] = useState(true);
@@ -77,6 +80,7 @@ export function ExternalMusic({ onClose, reducedMotion }: { onClose(): void; red
   }, [editing]);
   useEffect(() => {
     const timer = setInterval(() => {
+      if (nativePlayer) return;
       if (source?.provider === "YouTube" && yt.current) {
         const position = yt.current.getCurrentTime();
         if (Number.isFinite(position)) setTime(position);
@@ -92,23 +96,23 @@ export function ExternalMusic({ onClose, reducedMotion }: { onClose(): void; red
       else if (running) setTime(t => t + .1);
     }, 100);
     return () => clearInterval(timer);
-  }, [source, running]);
+  }, [source, running, nativePlayer]);
   useEffect(() => {
     let cancelled = false;
-    if (source?.provider === "YouTube") void youtubeAPI().then(api => {
+    if (source?.provider === "YouTube" && !nativePlayer) void youtubeAPI().then(api => {
       if (cancelled || !youtubeHost.current || !source.embed) return;
       const frame = document.createElement("iframe");
-      frame.src = source.embed; frame.title = "YouTube music player";
+      frame.src = youtubeEmbedURL(source.embed, window.location.origin); frame.title = "YouTube music player";
       frame.allow = "autoplay; encrypted-media; fullscreen; picture-in-picture";
       frame.allowFullscreen = true; frame.referrerPolicy = "strict-origin-when-cross-origin";
       youtubeHost.current.appendChild(frame);
       yt.current = new api.Player(frame, { events: {
         onReady: () => setSynced(true),
-        onError: () => setError("YouTube could not play this item. It may be private, unavailable, or disallow embedding. Try another link or open it on YouTube."),
+        onError: (event: { data?: number }) => { setSynced(false); setError(youtubePlaybackError(event.data ?? 0)); },
       } });
     }).catch(e => setError(e.message));
     return () => { cancelled = true; yt.current?.destroy(); yt.current = null; currentVideo.current = ""; };
-  }, [source]);
+  }, [source, nativePlayer]);
   useEffect(() => {
     if (!source || !automatic) return;
     const controller = new AbortController();
@@ -163,7 +167,7 @@ export function ExternalMusic({ onClose, reducedMotion }: { onClose(): void; red
     return () => { disposed = true; spotify?.destroy(); ["ready", "play", "playProgress"].forEach(event => widget?.unbind(event)); };
   }, [source]);
   useEffect(() => {
-    if (source?.provider !== "Apple Music") return;
+    if (!source || (source.provider !== "Apple Music" && !nativePlayer)) return;
     const controller = new AbortController();
     let busy = false;
     const timer = setInterval(() => {
@@ -182,7 +186,7 @@ export function ExternalMusic({ onClose, reducedMotion }: { onClose(): void; red
       }).catch(() => {}).finally(() => { busy = false; });
     }, 1000);
     return () => { clearInterval(timer); controller.abort(); };
-  }, [source]);
+  }, [source, nativePlayer]);
   useEffect(() => {
     if (!source?.embed || !computerAudio) return;
     const controller = new AbortController(); native.current = controller;
@@ -245,12 +249,13 @@ export function ExternalMusic({ onClose, reducedMotion }: { onClose(): void; red
   async function load() {
     try {
       const nextSource = parseMusicSource(link);
+      await window.clankerDesktop?.closeMusic();
       await disconnect(); setAudioStatus(computerAudio && nextSource.embed ? "Connecting computer audio…" : ""); resolvedTitle.current = ""; setTrack({ url: nextSource.url, title: "", artist: "", duration: 0 }); providerTime.current = 0; setSource(nextSource); setTime(0); setRunning(false); setSynced(false);
-      setDesignSeed(crypto.getRandomValues(new Uint32Array(1))[0]); setError(""); setEditing(false); reveal();
+      setDesignSeed(crypto.getRandomValues(new Uint32Array(1))[0]); setNativePlayer(false); setError(""); setEditing(false); reveal();
     } catch (e) { setError((e as Error).message); }
   }
   return <section className={`external-music ${controls || editing ? "external-controls-visible" : ""}`} onPointerMove={reveal} onFocusCapture={reveal} onKeyDown={reveal}>
-    <PerformanceVisual key={reactive ? "reactive" : "ambient"} player={audio} mode={mode} reducedMotion={reducedMotion} intensity={.8} seed={designSeed} quality={quality} />
+    <PerformanceVisual key={reactive ? "reactive" : "ambient"} player={audio} mode={mode} reducedMotion={reducedMotion} intensity={intensity} autoEnergy={autoEnergy} seed={designSeed} quality={quality} />
     <div className="external-top external-controls">
       <button onClick={onClose}>← Generative radio</button>
       <span>{source?.provider ?? "Music links"} · {reactive ? "Audio connected" : "Ambient visuals"}</span>
@@ -262,13 +267,18 @@ export function ExternalMusic({ onClose, reducedMotion }: { onClose(): void; red
       {next && <small>{next.text}</small>}
     </div>
     {source && <div className={`provider-player provider-${source.provider.toLowerCase().replace(/ /g, "-")}`}>
-      {source.provider === "YouTube" ? <div ref={youtubeHost} /> : source.provider === "Spotify" ? <div ref={spotifyHost} /> : source.embed ? <iframe ref={providerFrame} key={source.embed} title={`${source.provider} music player`} src={source.embed} allow="autoplay; encrypted-media; fullscreen; picture-in-picture" allowFullScreen referrerPolicy="strict-origin-when-cross-origin" /> : <audio key={source.url} ref={media} src={source.url} crossOrigin="anonymous" controls onPlay={() => void connectDirect()} onError={() => setError("This audio URL cannot play here. Check the URL and its cross-origin permissions, or play it in another tab and share that tab’s audio.")} />}
+      {nativePlayer ? <p className="provider-native-note">Playback is in the desktop music window.</p> : source.provider === "YouTube" ? <div ref={youtubeHost} /> : source.provider === "Spotify" ? <div ref={spotifyHost} /> : source.embed ? <iframe ref={providerFrame} key={source.embed} title={`${source.provider} music player`} src={source.embed} allow="autoplay; encrypted-media; fullscreen; picture-in-picture" allowFullScreen referrerPolicy="strict-origin-when-cross-origin" /> : <audio key={source.url} ref={media} src={source.url} crossOrigin="anonymous" controls onPlay={() => void connectDirect()} onError={() => setError("This audio URL cannot play here. Check the URL and its cross-origin permissions, or play it in another tab and share that tab’s audio.")} />}
+      {desktopAvailable && source.provider === "YouTube" && <button className="desktop-provider-button" onClick={() => {
+        setNativePlayer(true); setSynced(false);
+        void window.clankerDesktop?.openMusic(source.url).then(() => { setError(""); })
+          .catch(error => { setNativePlayer(false); setError(error.message); });
+      }}>Open desktop player ↗</button>}
       <a href={source.url} target="_blank" rel="noreferrer">Open on {source.provider} ↗</a>
     </div>}
     <div className="external-bottom external-controls">
       <div className="external-actions">
         {source?.provider !== "Audio link" && <button onClick={() => void (reactive ? (setComputerAudio(false), disconnect()) : capture())}>{reactive ? "Disconnect audio" : "Share tab audio"}</button>}
-        <EffectsMenu external mode={mode} onMode={setMode} quality={quality} onQuality={setQuality} onRemix={() => {
+        <EffectsMenu autoEnergy={autoEnergy} onAutoEnergy={onAutoEnergy} intensity={intensity} onIntensity={onIntensity} external mode={mode} onMode={setMode} quality={quality} onQuality={setQuality} onRemix={() => {
           if (mode === "randomizer") window.dispatchEvent(new Event("visualizer:next"));
               else if (mode === "random") window.dispatchEvent(new Event("visualizer:preset-next"));
           else setDesignSeed(n => (n + 1) >>> 0);

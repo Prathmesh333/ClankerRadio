@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useRef, useState, useMemo, type RefObject } from "react";
 import { renderSize, DEFAULT_RENDER_QUALITY, type RenderQuality } from "../lib/render-quality";
+import { VisualEnergy } from "../lib/visual-energy";
 import { ShapeVisual } from "./shape-visual";
 import { MilkdropVisual } from "./milkdrop-visual";
 import * as THREE from "three";
@@ -64,10 +65,12 @@ void main(){
 }`;
 
 type VisualProps = {
-  player: RefObject<VisualAudio | null>; mode: VisualMode; intensity: number; reducedMotion: boolean; seed: number; quality?: RenderQuality;
+  player: RefObject<VisualAudio | null>; mode: VisualMode; intensity: number; reducedMotion: boolean; seed: number; quality?: RenderQuality; autoEnergy?: boolean; energy?: VisualEnergy;
 };
 
-export function PerformanceVisual(props: VisualProps) {
+export function PerformanceVisual(input: VisualProps) {
+  const [energy] = useState(() => new VisualEnergy());
+  const props = { ...input, autoEnergy: input.autoEnergy ?? true, energy };
   if (props.mode === "randomizer") return <RandomizerVisual {...props} key={props.seed} />;
   return <SelectedVisual {...props} />;
 }
@@ -105,6 +108,8 @@ function ShaderVisual({
   player,
   mode,
   intensity,
+  autoEnergy = true,
+  energy,
   reducedMotion,
   seed,
   quality = DEFAULT_RENDER_QUALITY,
@@ -112,17 +117,19 @@ function ShaderVisual({
   player: RefObject<VisualAudio | null>;
   mode: VisualMode;
   intensity: number;
+  autoEnergy?: boolean;
+  energy?: VisualEnergy;
   reducedMotion: boolean;
   seed: number;
   quality?: RenderQuality;
 }) {
   const host = useRef<HTMLDivElement>(null),
-    settings = useRef({ mode, intensity, reducedMotion, seed });
+    settings = useRef({ mode, intensity, autoEnergy, energy, reducedMotion, seed });
   const resizeRef = useRef<() => void>(() => {}), qualityRef = useRef(quality);
   useEffect(() => { qualityRef.current = quality; resizeRef.current(); }, [quality]);
   useEffect(() => {
-    settings.current = { mode, intensity, reducedMotion, seed };
-  }, [mode, intensity, reducedMotion, seed]);
+    settings.current = { mode, intensity, autoEnergy, energy, reducedMotion, seed };
+  }, [mode, intensity, autoEnergy, energy, reducedMotion, seed]);
   useEffect(() => {
     const element = host.current;
     if (!element) return;
@@ -181,15 +188,15 @@ function ShaderVisual({
         delta = Math.min(0.1, (now - last) / 1000);
       last = now;
       const settingsValue = settings.current;
-      // Let MilkDrop own the GPU once its canvas is available; retain the shader as fallback.
-      if (settingsValue.mode === "random" && element.parentElement?.querySelector(".milkdrop-canvas canvas")) return;
       const signal = player.current?.sample();
       clock += delta * (settingsValue.reducedMotion ? 0.15 : 1);
       uniforms.time.value = clock;
       uniforms.bass.value += ((signal?.low ?? 0) - uniforms.bass.value) * 0.05;
       uniforms.energy.value +=
         ((signal?.mid ?? 0) - uniforms.energy.value) * 0.07;
-      uniforms.detail.value = settingsValue.intensity;
+      const strength = settingsValue.energy?.sample(now, settingsValue.intensity, settingsValue.autoEnergy, settingsValue.reducedMotion) ?? settingsValue.intensity;
+      uniforms.detail.value = strength;
+      element.dataset.energy = strength.toFixed(3);
       uniforms.theme.value = Math.max(0, ["nebula", "aurora", "prism", "solar"].indexOf(
         settingsValue.mode,
       ));

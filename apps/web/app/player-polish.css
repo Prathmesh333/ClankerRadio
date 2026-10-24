@@ -102,3 +102,13 @@ button:hover:enabled{background:var(--player-hover)}
 .player-drawer .rounds .reached{background:#303030;border-top-color:#ededed;color:#ededed}
 .agent-panel .text-button{color:#c4c4c4}
 .player-drawer .subheading{border-top-color:var(--player-edge)}
+
+.visual-energy-control .check-label{display:flex;align-items:center;gap:10px;margin:0;color:var(--player-ink);font-size:12px}
+.visual-energy-control input[type=checkbox]{width:16px;height:16px;flex:0 0 16px;accent-color:var(--player-accent)}
+.visual-energy-control p{font-size:11px;line-height:1.6;color:var(--player-muted);margin:10px 0 0}
+.visual-energy-control input[type=range]{margin:12px 0 0;display:block;accent-color:var(--player-accent)}
+.picture-settings .visual-energy-control{margin:20px 0}
+
+.provider-player .desktop-provider-button{width:100%;border:0;border-top:1px solid var(--player-edge);border-radius:0;font-size:11px;text-align:left;background:#191919;color:#eee;padding:10px}
+
+.provider-native-note{padding:16px;font-size:12px;color:var(--player-muted);line-height:1.6}

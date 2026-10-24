@@ -1,7 +1,10 @@
 {
   "name": "clanker-radio-desktop",
-  "version": "0.5.1",
+  "version": "0.5.2",
   "description": "Clanker Radio desktop music player",
   "author": "Prathamesh Nikam",
-  "main": "main.cjs"
+  "main": "main.cjs",
+  "dependencies": {
+    "@ghostery/adblocker-electron": "^2.20.1"
+  }
 }

@@ -14,7 +14,7 @@ jobs:
       - run: pip install --no-deps -e .
       - run: ruff check apps/api packages/music-core packages/audio-analysis tests scripts/render_fixture.py
       - run: pytest -q
-      - run: node --experimental-strip-types --test tests/music-source.test.mjs tests/render-quality.test.mjs
+      - run: node --experimental-strip-types --test tests/*.test.mjs
       - run: npm run lint
       - run: npm run typecheck
       - run: npm run build

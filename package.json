@@ -3,7 +3,8 @@
   "private": true,
   "workspaces": [
     "apps/web",
-    "packages/contracts"
+    "packages/contracts",
+    "desktop"
   ],
   "scripts": {
     "dev": "npm run dev --workspace @clanker/web",

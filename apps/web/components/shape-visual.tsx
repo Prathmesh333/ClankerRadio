@@ -8,18 +8,19 @@ import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js"
 import { OutputPass } from "three/addons/postprocessing/OutputPass.js";
 import { stageFragment, surfaceVertex, surfaceFragment } from "../lib/stage-shaders";
 import { renderSize, DEFAULT_RENDER_QUALITY, type RenderQuality } from "../lib/render-quality";
+import type { VisualEnergy } from "../lib/visual-energy";
 import type { VisualAudio } from "../lib/visual-audio";
 import { visualModes, type ShapeMode } from "../lib/visual-modes";
 
-export function ShapeVisual({ player, mode, seed, intensity, reducedMotion, quality = DEFAULT_RENDER_QUALITY }: {
+export function ShapeVisual({ player, mode, seed, intensity, autoEnergy = true, energy: energyDirector, reducedMotion, quality = DEFAULT_RENDER_QUALITY }: {
   player: RefObject<VisualAudio | null>; mode: ShapeMode; seed: number;
-  intensity: number; reducedMotion: boolean; quality?: RenderQuality;
+  intensity: number; autoEnergy?: boolean; energy?: VisualEnergy; reducedMotion: boolean; quality?: RenderQuality;
 }) {
   const host = useRef<HTMLDivElement>(null);
   const qualityRef = useRef(quality), resizeRef = useRef<() => void>(() => {});
   useEffect(() => { qualityRef.current = quality; resizeRef.current(); }, [quality]);
-  const settings = useRef({ intensity, reducedMotion });
-  useEffect(() => { settings.current = { intensity, reducedMotion }; }, [intensity, reducedMotion]);
+  const settings = useRef({ intensity, autoEnergy, energyDirector, reducedMotion });
+  useEffect(() => { settings.current = { intensity, autoEnergy, energyDirector, reducedMotion }; }, [intensity, autoEnergy, energyDirector, reducedMotion]);
   useEffect(() => {
     const element = host.current;
     if (!element) return;
@@ -100,7 +101,9 @@ export function ShapeVisual({ player, mode, seed, intensity, reducedMotion, qual
       frame = requestAnimationFrame(animate);
       if (document.hidden || !gate.ready()) return;
       const now = performance.now(), delta = Math.min(.05, (now - last) / 1000); last = now;
-      const { reducedMotion: gentle, intensity: strength } = settings.current;
+      const { reducedMotion: gentle, intensity: manual, autoEnergy: auto, energyDirector: director } = settings.current;
+      const strength = director?.sample(now, manual, auto, gentle) ?? manual;
+      element.dataset.energy = strength.toFixed(3);
       const signal = player.current?.sample();
       const smoothing = 1 - Math.exp(-delta * 7);
       bass += ((signal?.low ?? 0) - bass) * smoothing;

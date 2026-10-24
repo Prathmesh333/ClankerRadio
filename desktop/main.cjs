@@ -1,13 +1,15 @@
-const { app, BrowserWindow, dialog, Menu, shell, utilityProcess, nativeTheme } = require("electron");
+const { app, BrowserWindow, dialog, Menu, shell, utilityProcess, nativeTheme, session, ipcMain } = require("electron");
 const { spawn } = require("node:child_process");
 const { createServer } = require("node:net");
 const { randomBytes } = require("node:crypto");
 const { existsSync, mkdirSync, createWriteStream } = require("node:fs");
 const path = require("node:path");
 
+const { createAdBlocker } = require("./adblock.cjs");
+const { providerURL, providerNavigation } = require("./provider-url.cjs");
 app.setName("Clanker Radio");
 nativeTheme.themeSource = "dark";
-let window, api, web, quitting = false, origin;
+let window, providerWindow, adblock, api, web, quitting = false, origin;
 if (process.env.CLANKER_DESKTOP_DATA) {
   const customData = path.resolve(process.env.CLANKER_DESKTOP_DATA);
   mkdirSync(customData, { recursive: true }); app.setPath("userData", customData);
@@ -30,7 +32,9 @@ async function waitFor(url, headers = {}) {
   throw new Error("Local services did not start. See the desktop logs in the application data folder.");
 }
 function stop() {
+  if (quitting) return;
   quitting = true;
+  adblock?.dispose();
   if (web) web.kill();
   if (api?.pid) {
     if (process.platform === "win32") spawn("taskkill", ["/PID", String(api.pid), "/T", "/F"], { windowsHide: true });
@@ -47,6 +51,10 @@ async function boot() {
   const serverPath = existsSync(nested) ? nested : path.join(resources, "web/server.js");
   if (!existsSync(apiPath) || !existsSync(serverPath)) throw new Error("Desktop runtimes are missing. Run npm run desktop:prepare first.");
   const data = app.getPath("userData");
+  adblock = createAdBlocker(session.defaultSession, resources, data);
+  ipcMain.on("clanker:ad-blocking-enabled", event => { event.returnValue = adblock.enabled; });
+  session.defaultSession.registerPreloadScript({ type: "frame", filePath: path.join(__dirname, "youtube-adblock-preload.cjs") });
+  void adblock.refresh().catch(() => {});
   const logs = path.join(data, "logs"); mkdirSync(logs, { recursive: true });
   const log = createWriteStream(path.join(logs, "services.log"), { flags: "a" });
   const apiPort = await freePort();
@@ -70,7 +78,7 @@ async function boot() {
   if (quitting) return;
   window = new BrowserWindow({ title: "Clanker Radio", width: 1440, height: 960,
     minWidth: 720, minHeight: 540, backgroundColor: "#080808", show: false,
-    webPreferences: { nodeIntegration: false, contextIsolation: true, sandbox: true, backgroundThrottling: false } });
+    webPreferences: { preload: path.join(__dirname, "preload.cjs"), nodeIntegration: false, contextIsolation: true, sandbox: true, backgroundThrottling: false } });
   window.webContents.setWindowOpenHandler(({ url }) => { external(url); return { action: "deny" }; });
   window.webContents.on("will-navigate", (event, url) => { if (new URL(url).origin !== origin) { event.preventDefault(); external(url); } });
   window.webContents.session.setPermissionRequestHandler((contents, permission, callback) => {
@@ -78,12 +86,35 @@ async function boot() {
   });
   Menu.setApplicationMenu(Menu.buildFromTemplate([
     { label: "Clanker Radio", submenu: [
+      { label: "Block ads", type: "checkbox", checked: adblock.enabled, click: item => adblock.setEnabled(item.checked) },
+      { type: "separator" },
       { label: "Open library folder", click: () => shell.openPath(data) },
       { type: "separator" }, { role: "quit" },
     ] },
     { label: "View", submenu: [{ role: "reload" }, { role: "togglefullscreen" }, { role: "toggleDevTools" }] },
     { role: "editMenu" },
   ]));
+  ipcMain.handle("clanker:open-music", async (event, link) => {
+    if (event.sender !== window.webContents || event.senderFrame !== window.webContents.mainFrame || new URL(event.senderFrame.url).origin !== origin)
+      throw new Error("Only the local player can open a music window.");
+    const url = providerURL(link);
+    if (!providerWindow || providerWindow.isDestroyed()) {
+      providerWindow = new BrowserWindow({ title: "Music player · Clanker Radio", width: 1100, height: 800,
+        backgroundColor: "#080808", parent: window,
+        webPreferences: { nodeIntegration: false, contextIsolation: true, sandbox: true, backgroundThrottling: false } });
+      providerWindow.webContents.on("will-navigate", (event, next) => { if (!providerNavigation(next)) event.preventDefault(); });
+      providerWindow.webContents.setWindowOpenHandler(({ url: next }) => providerNavigation(next)
+        ? { action: "allow", overrideBrowserWindowOptions: { webPreferences: { nodeIntegration: false, contextIsolation: true, sandbox: true } } }
+        : { action: "deny" });
+    }
+    await providerWindow.loadURL(url); providerWindow.show(); providerWindow.focus();
+  });
+  ipcMain.handle("clanker:close-music", (event) => {
+    if (event.sender !== window.webContents || event.senderFrame !== window.webContents.mainFrame || new URL(event.senderFrame.url).origin !== origin)
+      throw new Error("Only the local player can close a music window.");
+    if (providerWindow && !providerWindow.isDestroyed()) providerWindow.close();
+  });
+  window.on("closed", () => app.quit());
   window.once("ready-to-show", () => window.show());
   await window.loadURL(origin);
 }

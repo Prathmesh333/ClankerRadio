@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { VisualEnergyControl } from "../components/visual-energy-control";
 import { PerformanceVisual } from "../components/performance-visual";
 import { EffectsMenu } from "../components/effects-menu";
 import { DEFAULT_RENDER_QUALITY, type RenderQuality } from "../lib/render-quality";
@@ -34,6 +35,7 @@ export default function Studio() {
   const [quality, setQuality] = useState<RenderQuality>(DEFAULT_RENDER_QUALITY);
   const [visualVariation, setVisualVariation] = useState(0);
   const [intensity, setIntensity] = useState(0.8);
+  const [autoEnergy, setAutoEnergy] = useState(true);
   const [reducedMotion, setReducedMotion] = useState(false);
   const [recording, setRecording] = useState(false);
   const [external, setExternal] = useState(false);
@@ -366,7 +368,7 @@ export default function Studio() {
     }
   }
 
-  if (external) return <main className="player-shell external-shell"><ExternalMusic reducedMotion={reducedMotion} onClose={() => setExternal(false)} /></main>;
+  if (external) return <main className="player-shell external-shell"><ExternalMusic autoEnergy={autoEnergy} onAutoEnergy={setAutoEnergy} intensity={intensity} onIntensity={setIntensity} reducedMotion={reducedMotion} onClose={() => setExternal(false)} /></main>;
 
   return (
     <main className={`player-shell ${recording ? "recording" : ""} ${controlsVisible || panel ? "controls-visible" : ""}`}
@@ -414,6 +416,7 @@ export default function Studio() {
         <PerformanceVisual
           player={player}
           mode={mode}
+          autoEnergy={autoEnergy}
           intensity={intensity}
           reducedMotion={reducedMotion}
           seed={((score?.seed ?? 42) ^ Math.imul(visualVariation, 2654435761)) >>> 0}
@@ -537,7 +540,7 @@ export default function Studio() {
                 }}
               />
             </label>
-            <EffectsMenu mode={mode} onMode={setMode} quality={quality} onQuality={setQuality} onRemix={() => {
+            <EffectsMenu autoEnergy={autoEnergy} onAutoEnergy={setAutoEnergy} intensity={intensity} onIntensity={setIntensity} mode={mode} onMode={setMode} quality={quality} onQuality={setQuality} onRemix={() => {
               if (mode === "randomizer") window.dispatchEvent(new Event("visualizer:next"));
               else if (mode === "random") window.dispatchEvent(new Event("visualizer:preset-next"));
               else setVisualVariation(n => n + 1);
@@ -637,17 +640,7 @@ export default function Studio() {
         {panel === "settings" && (
           <>
             <div className="picture-settings">
-              <label>
-                Visual energy
-                <input
-                  type="range"
-                  min=".1"
-                  max="1.5"
-                  step=".05"
-                  value={intensity}
-                  onChange={(event) => setIntensity(Number(event.target.value))}
-                />
-              </label>
+              <VisualEnergyControl automatic={autoEnergy} onAutomatic={setAutoEnergy} value={intensity} onValue={setIntensity} />
               <label className="check-label">
                 <input
                   type="checkbox"

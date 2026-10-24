@@ -1,6 +1,11 @@
 # Changes
 
-## Unreleased — 24 October 2026
+## Unreleased â€” 24 October 2026
+
+- Add automatic energy variation across every visual engine without recreating MilkDrop on energy changes.
+- Add default desktop ad blocking, bundled filter sources, and YouTube player-ad metadata filtering.
+- Identify YouTube embeds with the actual origin, report provider error codes, and add a sandboxed desktop-player fallback.
+- Package these changes as desktop version 0.5.2.
 
 - Add the Obsidian black-glass theme, neutral controls, dark native chrome, and accessible dialog motion.
 - Package the theme update as desktop version 0.5.1.

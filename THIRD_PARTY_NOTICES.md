@@ -89,3 +89,9 @@ PyWinRT (MIT): https://github.com/pywinrt/pywinrt . LRCLIB is accessed as a remo
 ## Desktop packaging
 
 The desktop edition uses Electron (MIT), electron-builder (MIT), and PyInstaller (GPL with its distribution exception for bundled applications). Electron bundles Chromium and Node.js; their shipped license files remain in the application distribution. Dependency notices in the bundled Python packages are retained. Build tools do not change the licensing of provider streams or lyric content.
+
+## Desktop ad blocking
+
+Ghostery `@ghostery/adblocker-electron` and its core/preload dependencies are used under MPL-2.0, with dependency license files retained in the distribution. The filter snapshot uses the upstream ads-only subscriptions, including EasyList and uBlock-compatible lists. Their source headers and corresponding source files, upstream URLs, SHA-256 hashes, GPL-3.0 and MPL-2.0 texts are shipped in `resources/adblock/sources/`.
+
+Research references: [Pear Desktop do-not-track](https://github.com/pear-devs/pear-desktop/tree/master/src/plugins/do-not-track), [Ghostery](https://github.com/ghostery/adblocker), and [FreeTube local API](https://docs.freetubeapp.io/usage/local-api/). The app's targeted YouTube player-data filter is original code inspired by the architecture, rather than a vendored Pear plugin. No FreeTube extractor code is included.

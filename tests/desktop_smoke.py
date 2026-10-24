@@ -52,6 +52,32 @@ with (output / "desktop.log").open("wb") as log:
             expect(page.get_by_role("button", name="Pause performance", exact=True)).to_be_visible()
             expect(page.locator(".milkdrop-canvas")).to_have_attribute("data-source", "music", timeout=30000)
             page.locator(".effects-menu > summary").click()
+            expect(page.get_by_label("Auto visual energy", exact=True)).to_be_checked()
+            page.evaluate("window.__milkCanvas = document.querySelector('.milkdrop-canvas canvas')")
+            first_energy = page.locator(".milkdrop-canvas").get_attribute("data-energy")
+            page.wait_for_timeout(1500)
+            assert page.locator(".milkdrop-canvas").get_attribute("data-energy") != first_energy
+            page.get_by_label("Auto visual energy", exact=True).uncheck()
+            page.get_by_label("Visual energy", exact=True).fill("1.2")
+            assert page.evaluate("window.__milkCanvas === document.querySelector('.milkdrop-canvas canvas')")
+            page.get_by_label("Auto visual energy", exact=True).check()
+            blocked = []
+            page.on("requestfailed", lambda request: blocked.append((request.url, request.failure)))
+            page.evaluate("fetch('https://ad.doubleclick.net/clanker-test').catch(() => null)")
+            page.wait_for_timeout(500)
+            assert any(any(code in str(failure) for code in ("ERR_BLOCKED_BY_CLIENT", "ERR_UNSAFE_REDIRECT")) for url, failure in blocked), blocked
+            fixture = """<html><script>window.ytInitialPlayerResponse={playerAds:[1],videoDetails:{videoId:'fixture'},streamingData:{formats:[{itag:1}]}};</script><body>Provider fixture</body></html>"""
+            context.route("https://music.youtube.com/**", lambda route: route.fulfill(status=200, content_type="text/html", body=fixture))
+            with context.expect_page() as opened:
+                page.evaluate("window.__providerOpen = window.clankerDesktop.openMusic('https://music.youtube.com/playlist?list=PLKBOD9JXe71Y&si=ps8pFHBWF0CUi6yU')")
+            provider = opened.value
+            provider.wait_for_load_state("domcontentloaded")
+            assert provider.evaluate("typeof window.clankerDesktop") == "undefined"
+            assert provider.evaluate("window.ytInitialPlayerResponse.playerAds === undefined")
+            assert provider.evaluate("window.ytInitialPlayerResponse.videoDetails.videoId") == "fixture"
+            assert provider.evaluate("JSON.parse('{\"adSlots\":[1],\"music\":true}').adSlots === undefined")
+            assert provider.evaluate("window.ytInitialPlayerResponse.streamingData.formats[0].itag") == 1
+            page.evaluate("window.clankerDesktop.closeMusic()")
             page.get_by_label("Visualizer theme", exact=True).select_option("randomizer")
             expect(page.locator(".randomizer-stage")).to_be_visible()
             page.screenshot(path=str(output / "desktop-player.png"))
@@ -73,5 +99,5 @@ with (output / "desktop.log").open("wb") as log:
                 ["taskkill", "/PID", str(process.pid), "/T", "/F"], capture_output=True, check=False
             )
 print(
-    f"PASS: packaged startup, real Butterchurn, playback, Randomizer, library creation and shutdown. {output}"
+    f"PASS: packaged startup, real Butterchurn, playback, automatic energy, ad request filtering, YouTube preload isolation, Randomizer, library creation and shutdown. {output}"
 )
