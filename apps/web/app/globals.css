@@ -1,13 +1,13 @@
 :root {
   color-scheme: dark;
-  --bg: #090b12;
-  --surface: #10131d;
-  --line: #242938;
-  --text: #eef0f7;
-  --muted: #a0a8bc;
-  --accent: #bbd9ad;
-  --cyan: #80e8e2;
-  --purple: #b6a1f2;
+  --bg: #080808;
+  --surface: #151515;
+  --line: #333333;
+  --text: #f5f5f5;
+  --muted: #a3a3a3;
+  --accent: #ededed;
+  --cyan: #e5e5e5;
+  --purple: #d4d4d4;
 }
 * {
   box-sizing: border-box;

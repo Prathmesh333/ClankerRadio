@@ -1,4 +1,4 @@
-const { app, BrowserWindow, dialog, Menu, shell, utilityProcess } = require("electron");
+const { app, BrowserWindow, dialog, Menu, shell, utilityProcess, nativeTheme } = require("electron");
 const { spawn } = require("node:child_process");
 const { createServer } = require("node:net");
 const { randomBytes } = require("node:crypto");
@@ -6,6 +6,7 @@ const { existsSync, mkdirSync, createWriteStream } = require("node:fs");
 const path = require("node:path");
 
 app.setName("Clanker Radio");
+nativeTheme.themeSource = "dark";
 let window, api, web, quitting = false, origin;
 if (process.env.CLANKER_DESKTOP_DATA) {
   const customData = path.resolve(process.env.CLANKER_DESKTOP_DATA);
@@ -68,7 +69,7 @@ async function boot() {
   await waitFor(`${origin}/api/health`);
   if (quitting) return;
   window = new BrowserWindow({ title: "Clanker Radio", width: 1440, height: 960,
-    minWidth: 720, minHeight: 540, backgroundColor: "#070b10", show: false,
+    minWidth: 720, minHeight: 540, backgroundColor: "#080808", show: false,
     webPreferences: { nodeIntegration: false, contextIsolation: true, sandbox: true, backgroundThrottling: false } });
   window.webContents.setWindowOpenHandler(({ url }) => { external(url); return { action: "deny" }; });
   window.webContents.on("will-navigate", (event, url) => { if (new URL(url).origin !== origin) { event.preventDefault(); external(url); } });

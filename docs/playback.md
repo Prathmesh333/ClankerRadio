@@ -8,7 +8,7 @@ Press **Play** to start a kept track or generate a fresh mix. Use previous/next,
 
 The engine uses 24 synthesized instrument patches, with per-voice envelopes, spectra, registers, and stereo placement. Electronic profiles use short hooks, separate percussion lanes, syncopated bass, and build/drop sections. These are procedural instrumental arrangements, not sampled acoustic performances or mastered commercial recordings. Older saved scores retain their earlier arrangement.
 
-Controls hide when idle and return on pointer movement or keyboard focus. Full-screen mode is intended for screen recording. Record the browser and its output audio with your capture software; the app does not export an MP4 or upload it.
+The Obsidian interface uses smoked black-glass panels, charcoal surfaces, and silver-white controls. Menus and dialogs use short transitions and respect reduced-motion and reduced-transparency preferences. Controls hide when idle and return on pointer movement or keyboard focus. Full-screen mode is intended for screen recording. Record the browser and its output audio with your capture software; the app does not export an MP4 or upload it.
 
 ## Effects and picture quality
 

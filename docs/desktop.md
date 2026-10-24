@@ -8,7 +8,7 @@ The desktop edition opens the player in a dedicated Electron window. It bundles 
 
 The Windows build produces:
 
-- `dist/desktop/Clanker-Radio-Setup-0.5.0.exe`: per-user installer with an optional desktop shortcut.
+- `dist/desktop/Clanker-Radio-Setup-0.5.1.exe`: per-user installer with an optional desktop shortcut.
 - `dist/desktop/win-unpacked/Clanker Radio.exe`: runnable app folder. Keep this executable with all adjacent files and the `resources/` directory.
 
 The current build is unsigned. Windows may show an unknown-publisher prompt. Code signing is a separate release step.

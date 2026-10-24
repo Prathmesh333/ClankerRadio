@@ -2,6 +2,9 @@
 
 ## Unreleased — 24 October 2026
 
+- Add the Obsidian black-glass theme, neutral controls, dark native chrome, and accessible dialog motion.
+- Package the theme update as desktop version 0.5.1.
+
 - Add a Windows Electron app with bundled Next.js and Python runtimes, an installer, and an unpacked executable.
 - Manage local service startup/shutdown, per-launch API tokens, and a persistent desktop library.
 - Add desktop build commands, a Windows packaging workflow, and a packaged-app smoke test.
