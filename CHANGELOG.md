@@ -2,6 +2,10 @@
 
 ## Unreleased — 24 October 2026
 
+- Version 0.6.0: persist music links, imported files, player preferences, and named visual scenes in SQLite.
+- Add local queues and crossfades, richer original synthesis, beat-aware visual transitions, clean OBS layouts, and landscape/vertical/square WebM recording.
+- Add GitHub release checks and checksum-verified installer downloads; trim unused locales and cloud modules from desktop builds.
+
 - Apply the selected Bubble Bot mascot across the player and Windows/browser icons, and replace inherited Electron executable metadata in desktop version 0.5.5.
 
 - Improve lyric typography with warm colors, clear outlines, and spaced words; add Show lyrics controls and simplify the desktop-player notice in version 0.5.4.

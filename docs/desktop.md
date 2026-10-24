@@ -8,7 +8,7 @@ The desktop edition opens the player in a dedicated Electron window. It bundles 
 
 The Windows build produces:
 
-- `dist/desktop/Clanker-Radio-Setup-0.5.5.exe`: per-user installer with an optional desktop shortcut.
+- `dist/desktop/Clanker-Radio-Setup-0.6.0.exe`: per-user installer with an optional desktop shortcut.
 - `dist/desktop/win-unpacked/Clanker Radio.exe`: runnable app folder. Keep this executable with all adjacent files and the `resources/` directory.
 
 The current build is unsigned. Windows may show an unknown-publisher prompt. Code signing is a separate release step.
@@ -77,3 +77,7 @@ Provider players and their fallback links fade out after two idle seconds with t
 ## Windows branding
 
 The approved robot-radio mascot supplies the player mark, browser icon, window icons, installer, and executable icon. `npm run branding:prepare` rebuilds the PNG/ICO derivatives from `assets/branding/clanker-radio.png`. Windows resource editing remains enabled with `win.signExecutable: false`, which skips signing while retaining product metadata and icon editing. The application sets `com.clankerradio.desktop` as its Windows identity. Older builds disabled all resource editing and retained Electron product metadata, so Task Manager displayed Electron. Multiple renderer/GPU processes remain expected for this architecture.
+
+Version 0.6.0 adds the [saved music and recording studio](library-and-studio.md), database-backed preferences, named scenes, beat-aware transitions, and verified update downloads. Desktop builds keep English/Hindi UI locales and exclude cloud/Redis/PostgreSQL modules from the frozen local API.
+
+The measured Windows application directory fell from 534,854,394 bytes in 0.5.5 to 450,161,216 bytes in 0.6.0 (15.8% smaller). This compares unpacked application files; installer size and Windows storage reporting differ.

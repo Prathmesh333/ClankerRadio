@@ -49,5 +49,9 @@
     "deleteAppDataOnUninstall": false
   },
   "electronDist": "node_modules/electron/dist",
-  "npmRebuild": false
+  "npmRebuild": false,
+  "electronLanguages": [
+    "en-US",
+    "hi"
+  ]
 }

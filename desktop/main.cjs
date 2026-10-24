@@ -5,6 +5,7 @@ const { randomBytes } = require("node:crypto");
 const { existsSync, mkdirSync, createWriteStream } = require("node:fs");
 const path = require("node:path");
 
+const { createUpdater } = require("./updates.cjs");
 const { createAdBlocker } = require("./adblock.cjs");
 const { providerURL, providerNavigation } = require("./provider-url.cjs");
 app.setName("Clanker Radio");
@@ -96,6 +97,10 @@ async function boot() {
     { label: "View", submenu: [{ role: "reload" }, { role: "togglefullscreen" }, { role: "toggleDevTools" }] },
     { role: "editMenu" },
   ]));
+  function authorizeRenderer(event){if(event.sender!==window.webContents||event.senderFrame!==window.webContents.mainFrame||new URL(event.senderFrame.url).origin!==origin)throw new Error("Only the local player can manage desktop updates.");}
+  const updater=createUpdater(app,data,progress=>{if(!window.isDestroyed())window.webContents.send("clanker:update-progress",progress);});
+  ipcMain.handle("clanker:check-updates",async event=>{authorizeRenderer(event);return updater.check();});
+  ipcMain.handle("clanker:install-update",async event=>{authorizeRenderer(event);if(!app.isPackaged||process.platform!=="win32")throw new Error("Installer updates are available in the packaged Windows app.");const file=await updater.download();await new Promise((resolve,reject)=>{const installer=spawn(file,["/S","/currentuser"],{detached:true,stdio:"ignore",windowsHide:true});installer.once("spawn",()=>{installer.unref();resolve();});installer.once("error",reject);});setTimeout(()=>app.quit(),500);return{status:"installing"};});
   ipcMain.handle("clanker:open-music", async (event, link) => {
     if (event.sender !== window.webContents || event.senderFrame !== window.webContents.mainFrame || new URL(event.senderFrame.url).origin !== origin)
       throw new Error("Only the local player can open a music window.");

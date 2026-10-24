@@ -1,5 +1,6 @@
 """Smoke-test the packaged Windows app, not a separately launched web server."""
 
+import base64
 import json
 import os
 import socket
@@ -51,6 +52,13 @@ with (output / "desktop.log").open("wb") as log:
             assert page.locator(".player-brand img").evaluate("e => e.complete && e.naturalWidth > 0")
             assert page.request.get(origin + "/brand/clanker-radio.png").ok
             assert page.request.get(origin + "/icon.ico").ok
+            preferences = page.request.get(origin + "/api/settings/player")
+            assert preferences.ok and preferences.json()["crossfadeS"] == 3
+            saved = page.request.post(origin + "/api/library/links", data={
+                "url": "https://music.youtube.com/playlist?list=PLKBOD9JXe71Y&si=smoke"
+            })
+            assert saved.ok, saved.text()
+            assert len(page.request.get(origin + "/api/library").json()) == 1
             expect(page.locator(".milkdrop-canvas canvas")).to_be_visible(timeout=30000)
             page.get_by_role("button", name="Play performance", exact=True).click()
             expect(page.get_by_role("button", name="Pause performance", exact=True)).to_be_visible()
@@ -67,24 +75,54 @@ with (output / "desktop.log").open("wb") as log:
             page.get_by_label("Visual energy", exact=True).fill("1.2")
             assert page.evaluate("window.__milkCanvas === document.querySelector('.milkdrop-canvas canvas')")
             page.get_by_label("Auto visual energy", exact=True).check()
+            page.locator(".effects-menu > summary").click()
+            page.evaluate("window.dispatchEvent(new Event('recording:open'))")
+            page.get_by_role("button", name="Start video recording", exact=True).click()
+            page.wait_for_timeout(2500)
+            page.get_by_role("button", name="Stop video recording", exact=True).click()
+            clip = page.get_by_role("link", name="Download recording", exact=True)
+            expect(clip).to_be_visible(timeout=15000)
+            encoded = page.evaluate("""async url=>{
+                const blob=await(await fetch(url)).blob();
+                return await new Promise(resolve=>{const reader=new FileReader();
+                  reader.onload=()=>resolve(reader.result.split(',')[1]);reader.readAsDataURL(blob)});
+            }""", clip.get_attribute("href"))
+            recording = base64.b64decode(encoded)
+            assert len(recording) > 5000 and recording[:4] == bytes([26, 69, 223, 163])
+            (output / "milkdrop-recording.webm").write_bytes(recording)
+            page.get_by_role("button", name="Close recording tools", exact=True).click()
+            page.locator(".effects-menu > summary").click()
             blocked = []
             page.on("requestfailed", lambda request: blocked.append((request.url, request.failure)))
             page.evaluate("fetch('https://ad.doubleclick.net/clanker-test').catch(() => null)")
             page.wait_for_timeout(500)
-            assert any(any(code in str(failure) for code in ("ERR_BLOCKED_BY_CLIENT", "ERR_UNSAFE_REDIRECT")) for url, failure in blocked), blocked
-            fixture = """<html><script>window.ytInitialPlayerResponse={playerAds:[1],videoDetails:{videoId:'fixture'},streamingData:{formats:[{itag:1}]}};</script><body>Provider fixture</body></html>"""
-            context.route("https://music.youtube.com/**", lambda route: route.fulfill(status=200, content_type="text/html", body=fixture))
+            assert any(
+                any(code in str(failure) for code in ("ERR_BLOCKED_BY_CLIENT", "ERR_UNSAFE_REDIRECT"))
+                for url, failure in blocked
+            ), blocked
+            fixture = """<html><script>
+                window.ytInitialPlayerResponse={playerAds:[1],videoDetails:{videoId:'fixture'},
+                streamingData:{formats:[{itag:1}]}};
+                </script><body>Provider fixture</body></html>"""
+            context.route(
+                "https://music.youtube.com/**",
+                lambda route: route.fulfill(status=200, content_type="text/html", body=fixture),
+            )
             with context.expect_page() as opened:
-                page.evaluate("window.__providerOpen = window.clankerDesktop.openMusic('https://music.youtube.com/playlist?list=PLKBOD9JXe71Y&si=ps8pFHBWF0CUi6yU')")
+                page.evaluate(
+                    "window.__providerOpen = window.clankerDesktop.openMusic('https://music.youtube.com/playlist?list=PLKBOD9JXe71Y&si=ps8pFHBWF0CUi6yU')"
+                )
             provider = opened.value
             provider.wait_for_load_state("domcontentloaded")
             assert provider.evaluate("typeof window.clankerDesktop") == "undefined"
             assert provider.evaluate("window.ytInitialPlayerResponse.playerAds === undefined")
             assert provider.evaluate("window.ytInitialPlayerResponse.videoDetails.videoId") == "fixture"
-            assert provider.evaluate("JSON.parse('{\"adSlots\":[1],\"music\":true}').adSlots === undefined")
+            assert provider.evaluate('JSON.parse(\'{"adSlots":[1],"music":true}\').adSlots === undefined')
             assert provider.evaluate("window.ytInitialPlayerResponse.streamingData.formats[0].itag") == 1
             provider.evaluate("window.__playbackMarker = 'keep-playing'")
-            page.evaluate("window.clankerDesktop.openMusic('https://music.youtube.com/playlist?list=PLKBOD9JXe71Y&si=ps8pFHBWF0CUi6yU')")
+            page.evaluate(
+                "window.clankerDesktop.openMusic('https://music.youtube.com/playlist?list=PLKBOD9JXe71Y&si=ps8pFHBWF0CUi6yU')"
+            )
             assert provider.evaluate("window.__playbackMarker") == "keep-playing"
             page.evaluate("window.clankerDesktop.closeMusic()")
             page.get_by_label("Spectrum position", exact=True).select_option("all")
@@ -106,24 +144,48 @@ with (output / "desktop.log").open("wb") as log:
             assert page.request.get(origin + "/api/health").ok
             page.locator(".effects-menu > summary").click()
             page.get_by_role("button", name="Open music link", exact=True).click()
-            page.evaluate("window.__lyricTime=5;window.YT={Player:class {constructor(frame,options){this.frame=frame;options.events.onReady();}getCurrentTime(){return window.__lyricTime;}getVideoData(){return {video_id:'fixture'};}destroy(){this.frame.remove();}}}")
-            page.route("https://www.youtube.com/embed/**", lambda route: route.fulfill(content_type="text/html", body="<body>Player fixture</body>"))
-            page.route("**/api/lyrics?**", lambda route: route.fulfill(json={"status":"synced", "lyrics":"[00:00.00]We light up the night\n[00:08.00]दिल से बजता संगीत", "message":"Fixture lyrics"}))
-            page.get_by_label("Track or playlist URL").fill("https://music.youtube.com/playlist?list=PLKBOD9JXe71Y")
+            page.evaluate("""window.__lyricTime=5;window.YT={Player:class {
+                constructor(frame,options){this.frame=frame;options.events.onReady();}
+                getCurrentTime(){return window.__lyricTime;}
+                getVideoData(){return {video_id:'fixture'};}
+                destroy(){this.frame.remove();}}}""")
+            page.route(
+                "https://www.youtube.com/embed/**",
+                lambda route: route.fulfill(content_type="text/html", body="<body>Player fixture</body>"),
+            )
+            page.route(
+                "**/api/lyrics?**",
+                lambda route: route.fulfill(
+                    json={
+                        "status": "synced",
+                        "lyrics": "[00:00.00]We light up the night\n[00:08.00]दिल से बजता संगीत",
+                        "message": "Fixture lyrics",
+                    }
+                ),
+            )
+            page.get_by_label("Track or playlist URL").fill(
+                "https://music.youtube.com/playlist?list=PLKBOD9JXe71Y"
+            )
             page.get_by_label("Connect Windows computer audio automatically").uncheck()
             page.get_by_role("button", name="Open music link", exact=True).click()
             expect(page.locator(".provider-player iframe")).to_be_attached()
             page.evaluate("window.__providerFrame = document.querySelector('.provider-player iframe')")
             expect(page.locator(".kinetic-lyrics p")).to_have_text("We light up the night ")
-            expect(page.locator(".kinetic-lyrics p span").first).to_have_css("-webkit-text-stroke-width", "1.5px")
-            assert page.locator(".kinetic-lyrics p").evaluate("e => parseFloat(getComputedStyle(e).columnGap) > 0")
+            expect(page.locator(".kinetic-lyrics p span").first).to_have_css(
+                "-webkit-text-stroke-width", "1.5px"
+            )
+            assert page.locator(".kinetic-lyrics p").evaluate(
+                "e => parseFloat(getComputedStyle(e).columnGap) > 0"
+            )
             page.locator(".effects-menu > summary").click()
             page.locator(".effects-menu").get_by_label("Show lyrics", exact=True).uncheck()
             expect(page.locator(".kinetic-lyrics")).to_have_count(0)
             page.evaluate("window.__lyricTime=9")
             page.locator(".effects-menu").get_by_label("Show lyrics", exact=True).check()
             expect(page.locator(".kinetic-lyrics p")).to_have_text("दिल से बजता संगीत ")
-            assert page.evaluate("window.__providerFrame === document.querySelector('.provider-player iframe')")
+            assert page.evaluate(
+                "window.__providerFrame === document.querySelector('.provider-player iframe')"
+            )
             page.locator(".effects-menu > summary").click()
             page.screenshot(path=str(output / "lyrics-readable-desktop.png"))
             page.get_by_role("button", name="Link & lyrics", exact=True).click()
@@ -144,7 +206,9 @@ with (output / "desktop.log").open("wb") as log:
             page.screenshot(path=str(output / "external-idle.png"))
             page.locator(".external-music").dispatch_event("pointermove")
             expect(page.locator(".provider-player")).to_have_css("opacity", "1")
-            assert page.evaluate("window.__providerFrame === document.querySelector('.provider-player iframe')")
+            assert page.evaluate(
+                "window.__providerFrame === document.querySelector('.provider-player iframe')"
+            )
             page.get_by_role("button", name="Open desktop player", exact=False).focus()
             page.wait_for_timeout(2300)
             expect(page.locator(".provider-player")).to_have_css("opacity", "1")
@@ -168,6 +232,4 @@ with (output / "desktop.log").open("wb") as log:
             subprocess.run(
                 ["taskkill", "/PID", str(process.pid), "/T", "/F"], capture_output=True, check=False
             )
-print(
-    f"PASS: packaged startup, real Butterchurn, playback, automatic energy, ad request filtering, YouTube preload isolation, Randomizer, library creation and shutdown. {output}"
-)
+print(f"PASS: packaged startup, audio, visuals, ad filtering, lyric controls, library and shutdown. {output}")

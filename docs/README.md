@@ -3,6 +3,7 @@
 These guides describe the current local player. Start with the [repository README](../README.md) for installation.
 
 - [Windows desktop app](desktop.md): installer, standalone executable, build commands, and library migration.
+- [Saved music and recording studio](library-and-studio.md): saved links, imported audio, scenes, crossfades, capture layouts, and updates.
 - [Playback and recording](playback.md): player controls, effects, music links, automatic lyrics, Codex competitions, and endless radio.
 - [Development](development.md): service commands, configuration, verification, and troubleshooting.
 - [Architecture](architecture.md): code map, audio and visual data flow, persistence, and boundaries.

@@ -2,6 +2,7 @@
 import { type SpectrumSettings } from "../lib/spectrum-settings";
 import { useEffect, useRef, useState, useMemo, type RefObject } from "react";
 import { renderSize, DEFAULT_RENDER_QUALITY, type RenderQuality } from "../lib/render-quality";
+import { BeatDirector } from "./beat-director";
 import { AudioSpectrum } from "./audio-spectrum";
 import { VisualEnergy } from "../lib/visual-energy";
 import { ShapeVisual } from "./shape-visual";
@@ -67,13 +68,13 @@ void main(){
 }`;
 
 type VisualProps = {
-  player: RefObject<VisualAudio | null>; mode: VisualMode; intensity: number; reducedMotion: boolean; seed: number; quality?: RenderQuality; spectrum?: boolean; spectrumSettings?: SpectrumSettings; autoEnergy?: boolean; energy?: VisualEnergy;
+  player: RefObject<VisualAudio | null>; mode: VisualMode; intensity: number; reducedMotion: boolean; seed: number; quality?: RenderQuality; beatSync?: boolean; spectrum?: boolean; spectrumSettings?: SpectrumSettings; autoEnergy?: boolean; energy?: VisualEnergy;
 };
 
 export function PerformanceVisual(input: VisualProps) {
   const [energy] = useState(() => new VisualEnergy());
   const props = { ...input, autoEnergy: input.autoEnergy ?? true, energy };
-  return <>{props.mode === "randomizer" ? <RandomizerVisual {...props} key={props.seed} /> : <SelectedVisual {...props} />}
+  return <><BeatDirector player={input.player} enabled={input.beatSync??true} reducedMotion={input.reducedMotion} />{props.mode === "randomizer" ? <RandomizerVisual {...props} key={props.seed} /> : <SelectedVisual {...props} />}
     {input.spectrum !== false && <AudioSpectrum settings={input.spectrumSettings} player={input.player} reducedMotion={input.reducedMotion} />}
   </>;
 }
@@ -95,9 +96,13 @@ function RandomizerVisual(props: VisualProps) {
   }, []);
   useEffect(() => {
     if (props.reducedMotion) return;
-    const timer = setInterval(() => setStep(n => n + 1), 28000);
-    return () => clearInterval(timer);
-  }, [props.reducedMotion]);
+    let changed=performance.now();
+    const next=()=>{changed=performance.now();setStep(n=>n+1);};
+    const beat=(event:Event)=>{if((event as CustomEvent).detail.downbeat&&performance.now()-changed>=28000)next();};
+    const timer=setInterval(()=>{if(performance.now()-changed>=(props.beatSync===false?28000:40000))next();},500);
+    if(props.beatSync!==false)window.addEventListener("music:beat",beat);
+    return()=>{clearInterval(timer);window.removeEventListener("music:beat",beat);};
+  }, [props.reducedMotion,props.beatSync]);
   const selected = order[step % order.length];
   return <div className="randomizer-stage" data-effect={selected}><SelectedVisual {...props} mode={selected} key={`${step}-${props.seed}`} /></div>;
 }
@@ -140,6 +145,7 @@ function ShaderVisual({
     try {
       renderer = new THREE.WebGLRenderer({
         antialias: false,
+        preserveDrawingBuffer: true,
         powerPreference: "high-performance",
       });
     } catch {

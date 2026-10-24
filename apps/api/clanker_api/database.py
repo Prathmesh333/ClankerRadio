@@ -44,6 +44,15 @@ class PreferenceRow(Base):
     payload: Mapped[dict] = mapped_column(JSON)
 
 
+
+class LibraryEntryRow(Base):
+    __tablename__ = "music_library"
+    id: Mapped[str] = mapped_column(String(80), primary_key=True)
+    kind: Mapped[str] = mapped_column(String(20), index=True)
+    payload: Mapped[dict] = mapped_column(JSON)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(UTC))
+
+
 def database(url: str | None = None):
     url = url or os.getenv("DATABASE_URL", "sqlite:///.data/clanker.db")
     if url.startswith("sqlite"):

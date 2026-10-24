@@ -1,18 +1,16 @@
-# Suggested improvements
+# Improvements and current scope
 
 [Documentation index](README.md)
 
-These are proposals, not implemented features. Keep new controls inside drawers and Effects so the listening view stays focused on music and visuals.
+The six requested improvement areas are implemented in desktop 0.6.0. See the [library and recording guide](library-and-studio.md) for controls and limits.
 
-## Recommended order
+| Area | Delivered |
+| --- | --- |
+| Saved scenes and preferences | Database-backed settings, named scenes, saved music links, provider-aware deduplication |
+| Sound and transitions | More distinct layered/plucked synthetic voices, mix processing, generated/local crossfades, local queues |
+| Beat-aware visuals | Known-tempo/onset beat tracking and musical-boundary transitions for Randomizer/MilkDrop |
+| Recording | Clean OBS view and 1080p landscape, vertical, and square WebM capture with connected audio and lyrics |
+| Local music library | File/folder import, tags/artwork, search, editable names, previous/next, repeat queue |
+| Desktop polish | Trimmed locale/server dependencies, Media Session actions, release checks, verified update download/install |
 
-| Priority | Improvement | Result |
-| --- | --- | --- |
-| 1 | Saved visual scenes and preferences | Save spectrum layout, lyric visibility, quality, and effects as named presets; restore them across desktop launches using local storage managed by the app, independent of the changing localhost port |
-| 2 | Music quality and transitions | Add better instrument samples, stronger mixing/limiting, and crossfades; assess rendered audio for clipping, balance, repetition, and rhythmic consistency alongside Codex score criticism |
-| 3 | Beat-aware visual direction | Detect onsets and tempo, then schedule visual/palette transitions on musical boundaries rather than only timers |
-| 4 | Recording mode | Offer clean 16:9 and 9:16 output layouts, a separate recording view, and hotkeys for scene changes without exposing setup controls |
-| 5 | Local music library | Import audio files or folders, read tags and album art, maintain a queue, and drive the same visuals without provider embeds |
-| 6 | Desktop polish | Add media-key controls, an optional tray player, in-app update checks, adaptive render limits, and a smaller package by trimming unused locales and server dependencies |
-
-The first useful release would combine saved scenes with crossfades. The largest improvement to the core generative-radio experience would be better sound sources and evaluation of rendered audio. Recording mode would be the next priority for streaming and screen-recording workflows.
+Possible later extensions include licensed sampled instrument banks, rendered-audio feedback for Codex judges, MP4 conversion, and a richer album/queue editor. They are not presented as implemented in this release. Embedded provider playback remains managed by each provider.

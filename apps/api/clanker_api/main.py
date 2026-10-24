@@ -7,13 +7,12 @@ from clanker_music.midi import export_midi
 from clanker_music.models import Brief
 from fastapi import BackgroundTasks, Depends, FastAPI, Header, HTTPException
 from fastapi.responses import Response
-from redis import Redis
-from rq import Queue
 from sqlalchemy.exc import IntegrityError
 
 from clanker_api.arena import stop_all_arenas
 from clanker_api.database import CompositionRow, JobRow, database
 from clanker_api.jobs import run_render
+from clanker_api.library_routes import router as library_router
 from clanker_api.loopback import router as loopback_router
 from clanker_api.lyrics import router as lyrics_router
 from clanker_api.performance_routes import router, station
@@ -43,6 +42,7 @@ app = FastAPI(title="Clanker Radio", version="0.2.0", lifespan=lifespan, depende
 app.include_router(router)
 app.include_router(lyrics_router)
 app.include_router(loopback_router)
+app.include_router(library_router)
 
 
 @app.get("/api/health")
@@ -141,6 +141,9 @@ def queue_render(
             session.rollback()
             return job_payload(session.get(JobRow, job_id))
         if os.getenv("QUEUE_BACKEND") == "redis":
+            from redis import Redis
+            from rq import Queue
+
             try:
                 Queue(connection=Redis.from_url(os.environ["REDIS_URL"])).enqueue(
                     run_render, job_id, job_id=job_id, job_timeout=600

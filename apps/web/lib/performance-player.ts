@@ -19,6 +19,10 @@ export class PerformancePlayer {
     activity: {},
   };
   private master: GainNode;
+  private transition: GainNode;
+  private musicBus: GainNode;
+  private plucks = new Map<string, AudioBuffer>();
+  readonly mixHealth = { peak: 0, rms: 0, frames: 0, clippedFrames: 0 };
   private buses = new Map<string, GainNode>();
   private waves = new Map<string, PeriodicWave>();
   private patches: Map<string, Patch>;
@@ -42,16 +46,31 @@ export class PerformancePlayer {
     this.master = ctx.createGain();
     this.master.gain.value = 0.8;
     const limiter = ctx.createDynamicsCompressor();
-    limiter.threshold.value = -8;
-    limiter.knee.value = 10;
-    limiter.ratio.value = 8;
-    limiter.attack.value = 0.008;
-    limiter.release.value = 0.25;
+    limiter.threshold.value = -3;
+    limiter.knee.value = 4;
+    limiter.ratio.value = 16;
+    limiter.attack.value = 0.003;
+    limiter.release.value = 0.15;
     this.analyser = ctx.createAnalyser();
     this.analyser.fftSize = 512;
     this.analyser.smoothingTimeConstant = 0.85;
-    this.master.connect(limiter);
-    limiter.connect(this.analyser);
+    const highpass = ctx.createBiquadFilter();
+    highpass.type = "highpass";
+    highpass.frequency.value = 28;
+    highpass.Q.value = 0.7;
+    const presence = ctx.createBiquadFilter();
+    presence.type = "peaking";
+    presence.frequency.value = 300;
+    presence.Q.value = 0.8;
+    presence.gain.value = -1.8;
+    this.transition = ctx.createGain();
+    this.musicBus = ctx.createGain();
+    this.musicBus.connect(this.master);
+    this.master.connect(highpass);
+    highpass.connect(presence);
+    presence.connect(limiter);
+    limiter.connect(this.transition);
+    this.transition.connect(this.analyser);
     this.analyser.connect(ctx.destination);
     const reverb = ctx.createConvolver();
     const impulse = ctx.createBuffer(2, ctx.sampleRate * 3, ctx.sampleRate);
@@ -86,7 +105,11 @@ export class PerformancePlayer {
       const pan = ctx.createStereoPanner();
       pan.pan.value = patch.pan;
       bus.connect(pan);
-      pan.connect(this.master);
+      pan.connect(
+        ["frame_drum", "shaker", "marimba"].includes(patch.id)
+          ? this.master
+          : this.musicBus,
+      );
       pan.connect(reverb);
       pan.connect(delay);
       this.buses.set(patch.id, bus);
@@ -104,6 +127,49 @@ export class PerformancePlayer {
     this.waveform = new Float32Array(this.analyser.fftSize);
   }
 
+  get duration() {
+    return this.performance?.durationS ?? 0;
+  }
+  get performanceId() {
+    return this.performance?.id ?? "";
+  }
+  get tempoBpm() {
+    return this.performance?.tempoBpm ?? 0;
+  }
+  fade(value: number, seconds: number) {
+    const now = this.context.currentTime;
+    this.transition.gain.cancelScheduledValues(now);
+    this.transition.gain.setValueAtTime(this.transition.gain.value, now);
+    if (seconds <= 0) this.transition.gain.setValueAtTime(value, now);
+    else this.transition.gain.linearRampToValueAtTime(value, now + seconds);
+  }
+  private pluck(patch: Patch, pitch: number, frequency: number) {
+    const key = `${patch.id}:${pitch}`;
+    const cached = this.plucks.get(key);
+    if (cached) return cached;
+    const length = Math.floor(this.context.sampleRate * 1.4),
+      period = Math.max(2, Math.round(this.context.sampleRate / frequency));
+    const buffer = this.context.createBuffer(
+        1,
+        length,
+        this.context.sampleRate,
+      ),
+      data = buffer.getChannelData(0),
+      ring = new Float32Array(period);
+    let seed = pitch * 7919 + patch.id.length * 31;
+    for (let i = 0; i < period; i++) {
+      seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
+      ring[i] = ((seed / 4294967296) * 2 - 1) * 0.65;
+    }
+    for (let i = 0; i < length; i++) {
+      const cursor = i % period;
+      const value = ring[cursor];
+      ring[cursor] = 0.497 * (value + ring[(cursor + 1) % period]);
+      data[i] = value * Math.min(1, (length - i) / 240);
+    }
+    this.plucks.set(key, buffer);
+    return buffer;
+  }
   async unlock() {
     await this.context.resume();
   }
@@ -197,6 +263,7 @@ export class PerformancePlayer {
     const ctx = this.context;
     const frequency = 440 * Math.pow(2, (event.pitch - 69) / 12);
     const envelope = ctx.createGain();
+    const auxiliary: AudioNode[] = [];
     const filter = ctx.createBiquadFilter();
     filter.type = "lowpass";
     filter.frequency.value =
@@ -206,27 +273,63 @@ export class PerformancePlayer {
           ? 3500
           : 6200;
     filter.Q.value = 0.45;
-    const electronic = !!this.performance && !["luminous", "dawn", "nocturne", "cosmic"].includes(this.performance.mood);
-    const drum = patch.id === "frame_drum", hat = patch.id === "shaker", snare = electronic && patch.id === "marimba";
-    const amplitude = electronic ? (drum ? .65 : snare ? .25 : hat ? .12 : patch.role === "bass" ? .19 : .045) * event.velocity / 127 : ((patch.gain * event.velocity) / 127) * .4;
-    if (electronic) filter.frequency.value = drum ? 500 : hat ? 8000 : 1800 + event.velocity * 32;
-    const attack = Math.min(electronic ? .004 : patch.attack, duration * 0.3),
-      decay = Math.min(electronic ? .12 : patch.decay, duration * 0.4);
+    const electronic =
+      !!this.performance &&
+      !["luminous", "dawn", "nocturne", "cosmic"].includes(
+        this.performance.mood,
+      );
+    const drum = patch.id === "frame_drum",
+      hat = patch.id === "shaker",
+      snare = electronic && patch.id === "marimba";
+    const amplitude = electronic
+      ? ((drum
+          ? 0.65
+          : snare
+            ? 0.25
+            : hat
+              ? 0.12
+              : patch.role === "bass"
+                ? 0.19
+                : 0.045) *
+          event.velocity) /
+        127
+      : ((patch.gain * event.velocity) / 127) * 0.4;
+    if (electronic)
+      filter.frequency.value = drum
+        ? 500
+        : hat
+          ? 8000
+          : 1800 + event.velocity * 32;
+    const attack = Math.min(electronic ? 0.004 : patch.attack, duration * 0.3),
+      decay = Math.min(electronic ? 0.12 : patch.decay, duration * 0.4);
     envelope.gain.setValueAtTime(0, start);
     envelope.gain.linearRampToValueAtTime(amplitude, start + attack);
     envelope.gain.exponentialRampToValueAtTime(
-      Math.max(0.0001, amplitude * (electronic ? .3 : patch.sustain)),
+      Math.max(0.0001, amplitude * (electronic ? 0.3 : patch.sustain)),
       start + attack + decay,
     );
     envelope.gain.setTargetAtTime(
       0.0001,
       start + duration,
-      electronic ? .025 : Math.max(0.015, patch.release / 4),
+      electronic ? 0.025 : Math.max(0.015, patch.release / 4),
     );
     envelope.connect(filter);
     filter.connect(bus);
-    const stop = start + duration + (electronic ? .2 : patch.release) + 0.1;
-    if (patch.id === "shaker" || snare) {
+    const stop = start + duration + (electronic ? 0.2 : patch.release) + 0.1;
+    if (electronic && drum) {
+      this.musicBus.gain.setValueAtTime(0.62, start);
+      this.musicBus.gain.exponentialRampToValueAtTime(1, start + 0.18);
+    }
+    if (patch.family === "plucked") {
+      const source = ctx.createBufferSource();
+      source.buffer = this.pluck(patch, event.pitch, frequency);
+      source.connect(envelope);
+      this.source(
+        source,
+        start,
+        Math.min(stop, start + source.buffer.duration),
+      );
+    } else if (patch.id === "shaker" || snare) {
       const source = ctx.createBufferSource();
       source.buffer = this.noise;
       source.loop = true;
@@ -234,11 +337,27 @@ export class PerformancePlayer {
       filter.frequency.value = snare ? 1200 : 6500;
       source.connect(envelope);
       this.source(source, start, stop);
+      if (snare) {
+        const body = ctx.createOscillator(),
+          gain = ctx.createGain();
+        body.frequency.setValueAtTime(190, start);
+        body.frequency.exponentialRampToValueAtTime(110, start + 0.09);
+        gain.gain.setValueAtTime(0.5, start);
+        gain.gain.exponentialRampToValueAtTime(0.001, start + 0.14);
+        body.connect(gain);
+        gain.connect(envelope);
+        auxiliary.push(gain);
+        this.source(body, start, start + 0.16);
+      }
     } else {
       const oscillator = ctx.createOscillator();
-      if (electronic) oscillator.type = drum ? "sine" : patch.role === "bass" ? "sawtooth" : ["lead", "answer"].includes(patch.role) ? "sawtooth" : "triangle";
+      if (electronic && (drum || patch.role === "bass"))
+        oscillator.type = drum ? "sine" : "sawtooth";
       else oscillator.setPeriodicWave(this.waves.get(patch.id)!);
-      oscillator.frequency.setValueAtTime(electronic && drum ? 155 : frequency, start);
+      oscillator.frequency.setValueAtTime(
+        electronic && drum ? 155 : frequency,
+        start,
+      );
       if (patch.id === "frame_drum")
         oscillator.frequency.exponentialRampToValueAtTime(
           electronic ? 45 : frequency * 0.45,
@@ -246,6 +365,23 @@ export class PerformancePlayer {
         );
       oscillator.connect(envelope);
       this.source(oscillator, start, stop);
+      if (
+        !drum &&
+        (patch.family === "strings" ||
+          ["lead", "answer", "bass"].includes(patch.role))
+      ) {
+        const layer = ctx.createOscillator(),
+          mix = ctx.createGain();
+        layer.type = patch.role === "bass" ? "sine" : "triangle";
+        layer.frequency.value =
+          patch.role === "bass" ? frequency / 2 : frequency;
+        layer.detune.value = patch.role === "bass" ? 0 : 7;
+        mix.gain.value = patch.role === "bass" ? 0.36 : 0.22;
+        layer.connect(mix);
+        mix.connect(envelope);
+        auxiliary.push(mix);
+        this.source(layer, start, stop);
+      }
       if (!electronic && ["winds", "strings"].includes(patch.family)) {
         const vibrato = ctx.createOscillator(),
           depth = ctx.createGain();
@@ -282,6 +418,7 @@ export class PerformancePlayer {
     cleanup.onended = () => {
       envelope.disconnect();
       filter.disconnect();
+      auxiliary.forEach((node) => node.disconnect());
       cleanup.disconnect();
       this.nodes.delete(cleanup);
     };
@@ -301,6 +438,12 @@ export class PerformancePlayer {
     let power = 0;
     for (const value of this.waveform) power += value * value;
     this.signal.rms = Math.sqrt(power / this.waveform.length);
+    let peak = 0;
+    for (const value of this.waveform) peak = Math.max(peak, Math.abs(value));
+    this.mixHealth.peak = Math.max(this.mixHealth.peak, peak);
+    this.mixHealth.rms = this.signal.rms;
+    this.mixHealth.frames++;
+    if (peak >= 0.99) this.mixHealth.clippedFrames++;
     this.signal.low = average(0, 5);
     this.signal.mid = average(5, 40);
     this.signal.high = average(40, 160);
@@ -340,6 +483,6 @@ export class PerformancePlayer {
   }
   async dispose() {
     this.halt();
-    await this.context.close();
+    if (this.context.state !== "closed") await this.context.close();
   }
 }

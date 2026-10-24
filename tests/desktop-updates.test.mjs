@@ -1,0 +1,12 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import {createRequire} from "node:module";
+import {mkdtempSync,readFileSync,existsSync,rmSync} from "node:fs";
+import {tmpdir} from "node:os";
+import path from "node:path";
+import {createHash} from "node:crypto";
+const {newer,releaseAsset,createUpdater}=createRequire(import.meta.url)("../desktop/updates.cjs");
+const bytes=Buffer.from("installer fixture"),hash=createHash("sha256").update(bytes).digest("hex");
+const release={tag_name:"v0.7.0",assets:[{name:"Clanker-Radio-Setup-0.7.0.exe",size:bytes.length,digest:`sha256:${hash}`,browser_download_url:"https://github.com/Prathmesh333/ClankerRadio/releases/download/v0.7.0/Clanker-Radio-Setup-0.7.0.exe"}]};
+test("updates require a newer stable release and a repository-owned installer",()=>{assert.ok(newer("0.7.0","0.6.0"));assert.equal(newer("0.5.9","0.6.0"),false);assert.equal(newer("garbage","0.6.0"),false);assert.ok(releaseAsset(release,"0.6.0"));assert.equal(releaseAsset({...release,prerelease:true},"0.6.0"),null);assert.equal(releaseAsset({...release,assets:[{...release.assets[0],browser_download_url:"https://evil.example/installer.exe"}]},"0.6.0"),null);});
+test("download verifies bytes and removes a corrupted partial installer",async()=>{const directory=mkdtempSync(path.join(tmpdir(),"clanker-update-test-")),original=globalThis.fetch;try{globalThis.fetch=async url=>String(url).includes("api.github.com")?Response.json(release):new Response(bytes);const updater=createUpdater({getVersion:()=>"0.6.0"},directory,()=>{});assert.equal((await updater.check()).verified,true);assert.deepEqual(readFileSync(await updater.download()),bytes);globalThis.fetch=async url=>String(url).includes("api.github.com")?Response.json({...release,assets:[{...release.assets[0],digest:`sha256:${"0".repeat(64)}`}]}):new Response(bytes);const corrupted=createUpdater({getVersion:()=>"0.6.0"},directory,()=>{});await corrupted.check();await assert.rejects(corrupted.download(),/checksum/);assert.equal(existsSync(path.join(directory,"updates/0.7.0.exe.part")),false);}finally{globalThis.fetch=original;assert.equal(path.dirname(path.resolve(directory)),path.resolve(tmpdir()));assert.ok(path.basename(directory).startsWith("clanker-update-test-"));rmSync(directory,{recursive:true,force:true});}});

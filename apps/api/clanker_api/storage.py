@@ -3,8 +3,6 @@ import os
 from pathlib import Path
 from typing import Protocol
 
-import boto3
-
 
 class ObjectStore(Protocol):
     def put(self, key: str, data: bytes) -> str: ...
@@ -38,6 +36,8 @@ class LocalStore:
 
 class S3Store:
     def __init__(self):
+        import boto3
+
         self.bucket = os.environ["S3_BUCKET"]
         self.client = boto3.client("s3", endpoint_url=os.getenv("S3_ENDPOINT_URL"))
 

@@ -1,14 +1,22 @@
 "use client";
+import {
+  usePlayerSettings,
+  type PlayerPreferences,
+} from "../lib/player-settings";
+import { RecordingControls } from "../components/recording-controls";
+import type { VisualAudio } from "../lib/visual-audio";
+import { DesktopUpdates } from "../components/desktop-updates";
+import { SavedScenes } from "../components/saved-scenes";
 import Image from "next/image";
-import { DEFAULT_SPECTRUM, type SpectrumSettings } from "../lib/spectrum-settings";
+import { type SpectrumSettings } from "../lib/spectrum-settings";
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { VisualEnergyControl } from "../components/visual-energy-control";
 import { PerformanceVisual } from "../components/performance-visual";
 import { EffectsMenu } from "../components/effects-menu";
-import { DEFAULT_RENDER_QUALITY, type RenderQuality } from "../lib/render-quality";
+import { type RenderQuality } from "../lib/render-quality";
 import { ExternalMusic } from "../components/external-music";
-import { DEFAULT_VISUAL_MODE, visualModes, type VisualMode } from "../lib/visual-modes";
+import { visualModes, type VisualMode } from "../lib/visual-modes";
 import { PerformancePlayer } from "../lib/performance-player";
 import {
   api,
@@ -22,25 +30,56 @@ const stamp = (seconds: number) =>
   `${Math.floor(seconds / 60)}:${String(Math.floor(seconds % 60)).padStart(2, "0")}`;
 
 export default function Studio() {
+  const linkedAudio = useRef<VisualAudio | null>(null);
   const player = useRef<PerformancePlayer | null>(null);
+  const retiring = useRef(new Set<PerformancePlayer>()),
+    transitioned = useRef("");
+  const crossfade = useRef(3);
+  function stopRetiring() {
+    for (const old of retiring.current) {
+      old.stop();
+      void old.dispose();
+    }
+    retiring.current.clear();
+  }
   const [patches, setPatches] = useState<Patch[]>([]);
   const [selected, setSelected] = useState<string[]>([]);
   const [score, setScore] = useState<Performance | null>(null);
   const [playing, setPlaying] = useState(false);
   const [position, setPosition] = useState(0);
-  const [volume, setVolume] = useState(0.8);
+  const {
+    preferences,
+    updatePreferences,
+    ready: settingsReady,
+    error: settingsError,
+  } = usePlayerSettings();
+  useEffect(() => {
+    crossfade.current = preferences.crossfadeS;
+  }, [preferences.crossfadeS]);
+  const volume = preferences.volume,
+    setVolume = (volume: number) => updatePreferences({ volume });
   const [tempo, setTempo] = useState(128);
   const [duration, setDuration] = useState(180);
   const [mood, setMood] = useState("edm");
   const [seed, setSeed] = useState(42);
-  const [mode, setMode] = useState<VisualMode>(DEFAULT_VISUAL_MODE);
-  const [quality, setQuality] = useState<RenderQuality>(DEFAULT_RENDER_QUALITY);
+  const mode = preferences.mode,
+    setMode = (mode: VisualMode) => updatePreferences({ mode });
+  const quality = preferences.quality,
+    setQuality = (quality: RenderQuality) => updatePreferences({ quality });
   const [visualVariation, setVisualVariation] = useState(0);
-  const [intensity, setIntensity] = useState(0.8);
-  const [spectrumSettings, setSpectrumSettings] = useState<SpectrumSettings>(DEFAULT_SPECTRUM);
-  const [spectrum, setSpectrum] = useState(true);
-  const [autoEnergy, setAutoEnergy] = useState(true);
-  const [reducedMotion, setReducedMotion] = useState(false);
+  const intensity = preferences.intensity,
+    setIntensity = (intensity: number) => updatePreferences({ intensity });
+  const spectrumSettings = preferences.spectrumSettings,
+    setSpectrumSettings = (spectrumSettings: SpectrumSettings) =>
+      updatePreferences({ spectrumSettings });
+  const spectrum = preferences.spectrum,
+    setSpectrum = (spectrum: boolean) => updatePreferences({ spectrum });
+  const autoEnergy = preferences.autoEnergy,
+    setAutoEnergy = (autoEnergy: boolean) => updatePreferences({ autoEnergy });
+  const [systemReducedMotion, setSystemReducedMotion] = useState(false);
+  const reducedMotion = preferences.gentleMotion ?? systemReducedMotion;
+  const setReducedMotion = (gentleMotion: boolean) =>
+    updatePreferences({ gentleMotion });
   const [recording, setRecording] = useState(false);
   const [external, setExternal] = useState(false);
   const [controlsVisible, setControlsVisible] = useState(true);
@@ -52,7 +91,9 @@ export default function Studio() {
   }
   useEffect(() => {
     hideControls.current = setTimeout(() => setControlsVisible(false), 2500);
-    return () => { if (hideControls.current) clearTimeout(hideControls.current); };
+    return () => {
+      if (hideControls.current) clearTimeout(hideControls.current);
+    };
   }, []);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -72,6 +113,10 @@ export default function Studio() {
     if (panel) drawer.current?.showModal();
     else drawer.current?.close();
   }, [panel]);
+  useEffect(() => {
+    player.current?.volume(volume);
+    for (const old of retiring.current) old.volume(volume);
+  }, [volume]);
   const selectedSet = new Set(selected);
   const [rms, setRms] = useState(0);
   const continuous = useRef(false),
@@ -88,6 +133,7 @@ export default function Studio() {
 
   useEffect(() => {
     let mounted = true;
+    const fadingPlayers = retiring.current;
     Promise.all([
       api<Patch[]>("/instruments"),
       api<Performance[]>("/performances"),
@@ -114,12 +160,14 @@ export default function Studio() {
         if (mounted) setError(error.message);
       });
     const media = window.matchMedia("(prefers-reduced-motion: reduce)");
-    const apply = () => setReducedMotion(media.matches);
+    const apply = () => setSystemReducedMotion(media.matches);
     apply();
     media.addEventListener("change", apply);
     return () => {
       mounted = false;
       media.removeEventListener("change", apply);
+      for (const old of fadingPlayers) void old.dispose();
+      fadingPlayers.clear();
       void player.current?.dispose();
       player.current = null;
       continuous.current = false;
@@ -180,6 +228,17 @@ export default function Studio() {
         player.current.sample();
         setRms(player.current.signal.rms);
         setPosition(player.current.position);
+        const audio = player.current;
+        if (
+          continuous.current &&
+          audio.signal.playing &&
+          crossfade.current > 0 &&
+          audio.duration - audio.position <= crossfade.current &&
+          transitioned.current !== audio.performanceId
+        ) {
+          transitioned.current = audio.performanceId;
+          void next.current();
+        }
       }
     }, 150);
     return () => clearInterval(interval);
@@ -213,7 +272,26 @@ export default function Studio() {
     return player.current;
   }
   async function playScore(performance: Performance) {
-    const audio = await engine();
+    const previous = player.current;
+    let audio: PerformancePlayer;
+    if (previous?.signal.playing && preferences.crossfadeS > 0) {
+      stopRetiring();
+      audio = new PerformancePlayer(patches);
+      player.current = audio;
+      audio.volume(volume);
+      audio.fade(0, 0);
+      await audio.unlock();
+      previous.onEnded = null;
+      retiring.current.add(previous);
+      previous.fade(0, preferences.crossfadeS);
+      audio.fade(1, preferences.crossfadeS);
+      setTimeout(
+        () => {
+          if (retiring.current.delete(previous)) void previous.dispose();
+        },
+        preferences.crossfadeS * 1000 + 100,
+      );
+    } else audio = await engine();
     setScore(performance);
     setPosition(0);
     setPlaying(true);
@@ -223,13 +301,24 @@ export default function Studio() {
     };
     audio.play(performance);
   }
-  async function generate(fresh=false) {
+  async function generate(fresh = false) {
     setBusy(true);
     setError("");
     continuous.current = false;
     try {
       await engine();
-      await playScore(await api<Performance>("/performances", fresh?{...brief(),seed:crypto.getRandomValues(new Uint32Array(1))[0]%2147483647}:brief()));
+      await playScore(
+        await api<Performance>(
+          "/performances",
+          fresh
+            ? {
+                ...brief(),
+                seed:
+                  crypto.getRandomValues(new Uint32Array(1))[0] % 2147483647,
+              }
+            : brief(),
+        ),
+      );
       await refreshLibrary();
     } catch (error) {
       setError((error as Error).message);
@@ -239,7 +328,7 @@ export default function Studio() {
   }
   async function togglePlayback() {
     if (!score) {
-      const matching = library.find(item => item.mood === mood);
+      const matching = library.find((item) => item.mood === mood);
       if (matching) await load(matching.id);
       else await generate(true);
       return;
@@ -247,6 +336,7 @@ export default function Studio() {
     try {
       const audio = await engine();
       if (playing) {
+        stopRetiring();
         audio.pause();
         setPlaying(false);
       } else {
@@ -334,6 +424,80 @@ export default function Studio() {
       setError((error as Error).message);
     }
   }
+  const transport = useRef<{toggle():void;next():void;previous():void;seek(seconds:number):void}>({
+    toggle: () => {},
+    next: () => {},
+    previous: () => {},
+    seek: () => {},
+  });
+  useEffect(() => {
+    transport.current = {
+      toggle: () => void togglePlayback(),
+      next: () => void skip(1),
+      previous: () => void skip(-1),
+      seek: (seconds) => player.current?.seek(seconds),
+    };
+  });
+  useEffect(() => {
+    if (!("mediaSession" in navigator) || external) return;
+    const session = navigator.mediaSession;
+    const handlers: Partial<
+      Record<MediaSessionAction, MediaSessionActionHandler>
+    > = {
+      play: () => {
+        if (!player.current?.signal.playing) transport.current.toggle();
+      },
+      pause: () => {
+        if (player.current?.signal.playing) transport.current.toggle();
+      },
+      nexttrack: () => transport.current.next(),
+      previoustrack: () => transport.current.previous(),
+      seekto: (details) => {
+        if (details.seekTime !== undefined)
+          transport.current.seek(details.seekTime);
+      },
+      seekforward: (details) =>
+        transport.current.seek(
+          (player.current?.position || 0) + (details.seekOffset || 10),
+        ),
+      seekbackward: (details) =>
+        transport.current.seek(
+          Math.max(
+            0,
+            (player.current?.position || 0) - (details.seekOffset || 10),
+          ),
+        ),
+    };
+    for (const [action, handler] of Object.entries(handlers)) {
+      try {
+        session.setActionHandler(action as MediaSessionAction, handler!);
+      } catch {}
+    }
+    return () => {
+      for (const action of Object.keys(handlers)) {
+        try {
+          session.setActionHandler(action as MediaSessionAction, null);
+        } catch {}
+      }
+    };
+  }, [external]);
+  useEffect(() => {
+    if (external || !("mediaSession" in navigator)) return;
+    navigator.mediaSession.metadata = score
+      ? new MediaMetadata({
+          title: score.title,
+          artist: "Clanker Radio",
+          artwork: [
+            {
+              src: new URL("/brand/clanker-radio.png", location.href).href,
+              sizes: "512x512",
+              type: "image/png",
+            },
+          ],
+        })
+      : null;
+    navigator.mediaSession.playbackState = playing ? "playing" : "paused";
+  }, [score, playing, external]);
   const pending = arena?.status === "RUNNING";
 
   const cleanTitle = (title: string) => title.replace(/\s*·\s*\d+$/, "");
@@ -372,24 +536,82 @@ export default function Studio() {
     }
   }
 
-  if (external) return <main className="player-shell external-shell"><ExternalMusic spectrum={spectrum} onSpectrum={setSpectrum} spectrumSettings={spectrumSettings} onSpectrumSettings={setSpectrumSettings} autoEnergy={autoEnergy} onAutoEnergy={setAutoEnergy} intensity={intensity} onIntensity={setIntensity} reducedMotion={reducedMotion} onClose={() => setExternal(false)} /></main>;
+  if (external)
+    return (
+      <main className="player-shell external-shell">
+        <RecordingControls
+          key="studio-recorder"
+          player={linkedAudio}
+          external
+          format={preferences.recordFormat}
+          onFormat={(recordFormat) => updatePreferences({ recordFormat })}
+        />
+        <ExternalMusic
+          sharedAudioRef={linkedAudio}
+          preferences={preferences}
+          onPreferences={updatePreferences}
+          spectrum={spectrum}
+          onSpectrum={setSpectrum}
+          spectrumSettings={spectrumSettings}
+          onSpectrumSettings={setSpectrumSettings}
+          autoEnergy={autoEnergy}
+          onAutoEnergy={setAutoEnergy}
+          intensity={intensity}
+          onIntensity={setIntensity}
+          reducedMotion={reducedMotion}
+          onClose={() => setExternal(false)}
+        />
+      </main>
+    );
 
   return (
-    <main className={`player-shell ${recording ? "recording" : ""} ${controlsVisible || panel ? "controls-visible" : ""}`}
-      onPointerMove={revealControls} onPointerLeave={() => setControlsVisible(false)}
-      onFocusCapture={revealControls} onKeyDown={revealControls} onTouchStart={revealControls}>
+    <main
+      className={`player-shell ${recording ? "recording" : ""} ${controlsVisible || panel ? "controls-visible" : ""}`}
+      onPointerMove={revealControls}
+      onPointerLeave={() => setControlsVisible(false)}
+      onFocusCapture={revealControls}
+      onKeyDown={revealControls}
+      onTouchStart={revealControls}
+    >
+      <RecordingControls
+        key="studio-recorder"
+        player={player}
+        format={preferences.recordFormat}
+        onFormat={(recordFormat) => updatePreferences({ recordFormat })}
+      />
       <header className="player-chrome">
         <span className="player-brand">
-          <Image src="/brand/clanker-radio.png" width={32} height={32} alt="" priority draggable={false} />
+          <Image
+            src="/brand/clanker-radio.png"
+            width={32}
+            height={32}
+            alt=""
+            priority
+            draggable={false}
+          />
           clanker<span>radio</span>
         </span>
         <nav aria-label="Player panels">
-          <button aria-label="Open music link" onClick={() => {
-            player.current?.pause(); setPlaying(false); continuous.current = false;
-            if (retry.current) clearTimeout(retry.current);
-            if (station?.running) void stopRadio();
-            setExternal(true);
-          }}>↗ Link</button>
+          <button
+            aria-label="Record video"
+            onClick={() => window.dispatchEvent(new Event("recording:open"))}
+          >
+            ●
+          </button>
+          <button
+            aria-label="Open music link"
+            onClick={() => {
+              stopRetiring();
+              player.current?.pause();
+              setPlaying(false);
+              continuous.current = false;
+              if (retry.current) clearTimeout(retry.current);
+              if (station?.running) void stopRadio();
+              setExternal(true);
+            }}
+          >
+            ↗ Link
+          </button>
           <button
             aria-pressed={panel === "playlist"}
             onClick={() => setPanel(panel === "playlist" ? null : "playlist")}
@@ -418,6 +640,7 @@ export default function Studio() {
       </header>
       <section className="live-stage">
         <PerformanceVisual
+          beatSync={preferences.beatSync}
           player={player}
           spectrumSettings={spectrumSettings}
           spectrum={spectrum}
@@ -425,7 +648,11 @@ export default function Studio() {
           autoEnergy={autoEnergy}
           intensity={intensity}
           reducedMotion={reducedMotion}
-          seed={((score?.seed ?? 42) ^ Math.imul(visualVariation, 2654435761)) >>> 0}
+          seed={
+            (preferences.visualSeed ^
+              Math.imul(visualVariation, 2654435761)) >>>
+            0
+          }
           quality={quality}
         />
         {recording && (
@@ -447,9 +674,7 @@ export default function Studio() {
             <span className="track-label">
               {playing ? "NOW PLAYING" : "CLANKER RADIO"}
             </span>
-            <h1>
-              {score ? cleanTitle(score.title) : "No track selected"}
-            </h1>
+            <h1>{score ? cleanTitle(score.title) : "No track selected"}</h1>
           </div>
           <button
             className={`favorite-button ${favorite ? "saved" : ""}`}
@@ -502,6 +727,7 @@ export default function Studio() {
               disabled={!score}
               onClick={() => {
                 continuous.current = false;
+                stopRetiring();
                 player.current?.stop();
                 setPlaying(false);
                 setPosition(0);
@@ -546,11 +772,38 @@ export default function Studio() {
                 }}
               />
             </label>
-            <EffectsMenu spectrum={spectrum} onSpectrum={setSpectrum} spectrumSettings={spectrumSettings} onSpectrumSettings={setSpectrumSettings} autoEnergy={autoEnergy} onAutoEnergy={setAutoEnergy} intensity={intensity} onIntensity={setIntensity} mode={mode} onMode={setMode} quality={quality} onQuality={setQuality} onRemix={() => {
-              if (mode === "randomizer") window.dispatchEvent(new Event("visualizer:next"));
-              else if (mode === "random") window.dispatchEvent(new Event("visualizer:preset-next"));
-              else setVisualVariation(n => n + 1);
-            }} />
+            <EffectsMenu
+              beatSync={preferences.beatSync}
+              onBeatSync={(beatSync) => updatePreferences({ beatSync })}
+              scenes={
+                <SavedScenes
+                  preferences={preferences}
+                  onApply={(value: PlayerPreferences) => {
+                    updatePreferences(value);
+                    setVisualVariation(0);
+                  }}
+                />
+              }
+              spectrum={spectrum}
+              onSpectrum={setSpectrum}
+              spectrumSettings={spectrumSettings}
+              onSpectrumSettings={setSpectrumSettings}
+              autoEnergy={autoEnergy}
+              onAutoEnergy={setAutoEnergy}
+              intensity={intensity}
+              onIntensity={setIntensity}
+              mode={mode}
+              onMode={setMode}
+              quality={quality}
+              onQuality={setQuality}
+              onRemix={() => {
+                if (mode === "randomizer")
+                  window.dispatchEvent(new Event("visualizer:next"));
+                else if (mode === "random")
+                  window.dispatchEvent(new Event("visualizer:preset-next"));
+                else setVisualVariation((n) => n + 1);
+              }}
+            />
           </div>
         </div>
         <div className="deck-status">
@@ -646,7 +899,44 @@ export default function Studio() {
         {panel === "settings" && (
           <>
             <div className="picture-settings">
-              <VisualEnergyControl automatic={autoEnergy} onAutomatic={setAutoEnergy} value={intensity} onValue={setIntensity} />
+              <DesktopUpdates />
+              <SavedScenes
+                preferences={preferences}
+                onApply={(value: PlayerPreferences) => {
+                  updatePreferences(value);
+                  setVisualVariation(0);
+                }}
+              />
+              <p className="settings-save-status">
+                {settingsError ||
+                  (settingsReady
+                    ? "Settings save automatically on this computer."
+                    : "Restoring saved settings…")}
+              </p>
+              <label htmlFor="crossfade-duration">
+                Crossfade · {preferences.crossfadeS}s
+              </label>
+              <input
+                id="crossfade-duration"
+                type="range"
+                min="0"
+                max="8"
+                step=".5"
+                value={preferences.crossfadeS}
+                onChange={(event) =>
+                  updatePreferences({ crossfadeS: Number(event.target.value) })
+                }
+              />
+              <p className="settings-save-status">
+                Generated tracks and local files blend between songs. Zero
+                disables crossfades.
+              </p>
+              <VisualEnergyControl
+                automatic={autoEnergy}
+                onAutomatic={setAutoEnergy}
+                value={intensity}
+                onValue={setIntensity}
+              />
               <label className="check-label">
                 <input
                   type="checkbox"
@@ -655,6 +945,14 @@ export default function Studio() {
                 />
                 Gentle motion
               </label>
+              {preferences.gentleMotion !== null && (
+                <button
+                  type="button"
+                  onClick={() => updatePreferences({ gentleMotion: null })}
+                >
+                  Use system motion preference
+                </button>
+              )}
             </div>{" "}
             <aside className="direction" id="performance-controls">
               <p className="kicker">01 / THE ENSEMBLE</p>
@@ -671,10 +969,36 @@ export default function Studio() {
                 value={mood}
                 onChange={(e) => {
                   setMood(e.target.value);
-                  setTempo(({ edm:128, house:124, techno:138, trance:140, drum_and_bass:174, hip_hop:92, synthwave:110, rock:132 } as Record<string, number>)[e.target.value] ?? 72);
+                  setTempo(
+                    (
+                      {
+                        edm: 128,
+                        house: 124,
+                        techno: 138,
+                        trance: 140,
+                        drum_and_bass: 174,
+                        hip_hop: 92,
+                        synthwave: 110,
+                        rock: 132,
+                      } as Record<string, number>
+                    )[e.target.value] ?? 72,
+                  );
                 }}
               >
-                {["edm", "house", "techno", "trance", "drum_and_bass", "hip_hop", "synthwave", "rock", "luminous", "dawn", "nocturne", "cosmic"].map((mood) => (
+                {[
+                  "edm",
+                  "house",
+                  "techno",
+                  "trance",
+                  "drum_and_bass",
+                  "hip_hop",
+                  "synthwave",
+                  "rock",
+                  "luminous",
+                  "dawn",
+                  "nocturne",
+                  "cosmic",
+                ].map((mood) => (
                   <option key={mood}>{mood}</option>
                 ))}
               </select>

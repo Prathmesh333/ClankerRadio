@@ -1,6 +1,6 @@
 import { spawnSync } from "node:child_process";
-import { cpSync, existsSync, mkdirSync } from "node:fs";
-import { resolve } from "node:path";
+import { cpSync, existsSync, mkdirSync, rmSync } from "node:fs";
+import { resolve, relative, isAbsolute } from "node:path";
 
 if (process.platform !== "win32") throw new Error("Build Windows packages on Windows.");
 const root = resolve(import.meta.dirname, "..");
@@ -21,9 +21,14 @@ run(resolve(root, ".venv/Scripts/python.exe"), [
   "--collect-submodules", "winrt", "--hidden-import", "uvicorn.logging",
   "--hidden-import", "uvicorn.loops.asyncio", "--hidden-import", "uvicorn.protocols.http.h11_impl",
   "--hidden-import", "uvicorn.lifespan.on", "--hidden-import", "sqlalchemy.dialects.sqlite",
+  "--exclude-module", "boto3", "--exclude-module", "botocore", "--exclude-module", "s3transfer",
+  "--exclude-module", "psycopg", "--exclude-module", "psycopg_binary", "--exclude-module", "redis", "--exclude-module", "rq",
   "desktop/api_entry.py",
 ]);
 const standalone = resolve(root, "apps/web/.next/standalone");
+const webStaging=resolve(output,"web"), withinWorkspace=relative(root,webStaging);
+if(!withinWorkspace||withinWorkspace.startsWith("..")||isAbsolute(withinWorkspace))throw new Error("Web staging must stay inside the workspace.");
+rmSync(webStaging,{recursive:true,force:true});
 cpSync(standalone, resolve(output, "web"), { recursive: true });
 const webRoot = existsSync(resolve(output, "web/apps/web/server.js"))
   ? resolve(output, "web/apps/web") : resolve(output, "web");

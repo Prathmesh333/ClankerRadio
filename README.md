@@ -7,9 +7,11 @@ A local music player that generates instrumental performances, runs Codex compos
 - Generates 24-voice scores with EDM, house, techno, trance, drum and bass, hip hop, synthwave, and rock profiles.
 - Uses real Codex CLI calls for two competing composers, three rounds of peer criticism and revision, and an independent judge.
 - Keeps favorites and approved winners in a playlist, with symbolic duplicate detection and JSON downloads.
-- Defaults to real **Butterchurn / MilkDrop**, with 367 unique presets. Includes Three.js scenes, kinetic lyrics, and a Randomizer that changes effects every 28 seconds.
+- Defaults to real **Butterchurn / MilkDrop**, with 367 unique presets. Includes Three.js scenes, kinetic lyrics, and a Randomizer with beat-aware automatic effect changes.
 - Adds live spectrum bars with mirrored layouts, edge placements, custom positioning, and adjustable size.
 - Offers display-sharp, UHD, and performance rendering without cropping the frame. Playback controls hide when idle. Automatic visual energy varies every theme, including MilkDrop.
+- Saves opened links and playlists, imports local music with tags/artwork, restores visual preferences, and stores named scenes.
+- Crossfades generated/local tracks, times visual transitions to beats, and records clean landscape, vertical, or square WebM clips.
 - Plays supported music links through provider embeds, looks up lyrics automatically, and connects their audio to the visuals.
 
 Generated music uses procedural synthesis. Codex critics assess score plans rather than listening to audio. External playback, lyric availability, and playlist clocks depend on the provider. See the [playback guide](docs/playback.md) for details.
@@ -43,6 +45,7 @@ The API runs at [localhost:8000](http://localhost:8000), with interactive docume
 | Guide | Contents |
 | --- | --- |
 | [Documentation index](docs/README.md) | Current guides and original specifications |
+| [Saved music and studio](docs/library-and-studio.md) | Library, presets, crossfades, recording, and desktop updates |
 | [Playback and recording](docs/playback.md) | Music, effects, links, lyrics, Codex, and endless radio |
 | [Development](docs/development.md) | Setup, configuration, tests, troubleshooting, and containers |
 | [Architecture](docs/architecture.md) | Services, data flow, score storage, and implementation limits |

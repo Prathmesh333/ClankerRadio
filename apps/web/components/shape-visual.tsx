@@ -27,7 +27,7 @@ export function ShapeVisual({ player, mode, seed, intensity, autoEnergy = true, 
     let state = (seed ^ Math.floor(Math.random() * 0xffffffff)) >>> 0;
     const random = () => { state = (Math.imul(state, 1664525) + 1013904223) >>> 0; return state / 4294967296; };
     let renderer: THREE.WebGLRenderer;
-    try { renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" }); }
+    try { renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true, powerPreference: "high-performance" }); }
     catch { element.textContent = "Enable graphics acceleration for Three.js visuals."; return () => { element.textContent = ""; }; }
     const gate = gpuFrameGate(renderer.getContext());
     renderer.setPixelRatio(1);

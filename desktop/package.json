@@ -1,6 +1,6 @@
 {
   "name": "clanker-radio-desktop",
-  "version": "0.5.5",
+  "version": "0.6.0",
   "description": "Clanker Radio desktop music player",
   "author": "Prathamesh Nikam",
   "main": "main.cjs",

@@ -7,15 +7,15 @@ import { renderSize, DEFAULT_RENDER_QUALITY, type RenderQuality } from "../lib/r
 import type { Visualizer } from "butterchurn";
 
 // Butterchurn / MilkDrop: FFT-driven preset equations and feedback-frame warping.
-export function MilkdropVisual({ player, reducedMotion, intensity, autoEnergy = true, energy, quality = DEFAULT_RENDER_QUALITY }: { player: RefObject<VisualAudio | null>; reducedMotion: boolean; intensity: number; autoEnergy?: boolean; energy?: VisualEnergy; quality?: RenderQuality }) {
+export function MilkdropVisual({ player, reducedMotion, intensity, autoEnergy = true, beatSync = true, energy, quality = DEFAULT_RENDER_QUALITY }: { player: RefObject<VisualAudio | null>; reducedMotion: boolean; intensity: number; autoEnergy?: boolean; beatSync?: boolean; energy?: VisualEnergy; quality?: RenderQuality }) {
   const [source, setSource] = useState<VisualAudio | null>(null);
   useEffect(() => {
     const sync = () => setSource(player.current);
     sync(); const timer = setInterval(sync, 250);
     return () => clearInterval(timer);
   }, [player]);
-  const settings = useRef({ intensity, autoEnergy, energy });
-  useEffect(() => { settings.current = { intensity, autoEnergy, energy }; }, [intensity, autoEnergy, energy]);
+  const settings = useRef({ intensity, autoEnergy, beatSync, energy });
+  useEffect(() => { settings.current = { intensity, autoEnergy, beatSync, energy }; }, [intensity, autoEnergy, beatSync, energy]);
   const host = useRef<HTMLDivElement>(null);
   const qualityRef = useRef(quality), resizeRef = useRef<() => void>(() => {});
   useEffect(() => { qualityRef.current = quality; resizeRef.current(); }, [quality]);
@@ -36,6 +36,8 @@ export function MilkdropVisual({ player, reducedMotion, intensity, autoEnergy = 
       nextChange = performance.now() + (18000 + Math.random() * 22000) / Math.max(.5, settings.current.energy?.value ?? settings.current.intensity);
     };
     const nextPreset = () => { if (visualizer && names.length) change(); };
+    const onBeat=(event:Event)=>{if(settings.current.beatSync&&!reducedMotion&&(event as CustomEvent).detail.downbeat&&performance.now()>nextChange)change();};
+    window.addEventListener("music:beat",onBeat);
     window.addEventListener("visualizer:preset-next", nextPreset);
     const start = async () => {
       if (visualizer || starting || cancelled) return;
@@ -48,6 +50,7 @@ export function MilkdropVisual({ player, reducedMotion, intensity, autoEnergy = 
         const initial = renderSize(element.clientWidth, element.clientHeight, qualityRef.current, devicePixelRatio);
         // Butterchurn does NOT size the DOM canvas. A default 300×150 buffer crops its viewport.
         canvas.width = initial.width; canvas.height = initial.height;
+        canvas.getContext("webgl2", {preserveDrawingBuffer:true});
         visualizer = engine.default.createVisualizer(current?.context ?? (idleContext = new AudioContext()), canvas, { width: initial.width, height: initial.height, pixelRatio: 1, textureRatio: 1, outputFXAA: true });
         gate = gpuFrameGate(canvas.getContext("webgl2")!);
         presets = { ...pack.default.getPresets(), ...extra.default.getPresets(), ...extra2.default.getPresets() }; names = Object.keys(presets);
@@ -84,7 +87,7 @@ export function MilkdropVisual({ player, reducedMotion, intensity, autoEnergy = 
             const strength = value.energy?.sample(performance.now(), value.intensity, value.autoEnergy, reducedMotion) ?? value.intensity;
             element.dataset.energy = strength.toFixed(3);
             if (current && visualGain) visualGain.gain.setTargetAtTime(strength / .8, current.context.currentTime, .25);
-            if (!reducedMotion && performance.now() > nextChange) change();
+            if (!reducedMotion && performance.now() > nextChange && (!settings.current.beatSync || performance.now()-nextChange>6000)) change();
             visualizer?.render(current ? undefined : { audioLevels: { timeByteArray: silent, timeByteArrayL: silent, timeByteArrayR: silent } }); rendered++; gate?.submitted();
           } catch (error) { element.dataset.error = String(error); canvas?.remove(); cancelAnimationFrame(frame); }
         };
@@ -94,7 +97,7 @@ export function MilkdropVisual({ player, reducedMotion, intensity, autoEnergy = 
     const poll = setInterval(() => { void start(); }, 500);
     void start();
     return () => {
-      cancelled = true; window.removeEventListener("visualizer:preset-next", nextPreset); clearInterval(poll); cancelAnimationFrame(frame); observer?.disconnect();
+      cancelled = true; window.removeEventListener("visualizer:preset-next", nextPreset); clearInterval(poll); cancelAnimationFrame(frame); observer?.disconnect(); window.removeEventListener("music:beat",onBeat);
       if (current && visualizer) {
         try { if (visualGain) { visualizer.disconnectAudio(visualGain); current.analyser.disconnect(visualGain); visualGain.disconnect(); } }
         catch { /* The source may already have disconnected its audio graph. */ }
