@@ -2,6 +2,9 @@
 
 ## Unreleased — 24 October 2026
 
+- Add live audio spectrum bars across visual themes, with an Effects toggle and reduced-motion support.
+- Hide provider players and fallback links with idle controls, retaining playback and keyboard access; desktop version 0.5.3.
+
 - Add automatic energy variation across every visual engine without recreating MilkDrop on energy changes.
 - Add default desktop ad blocking, bundled filter sources, and YouTube player-ad metadata filtering.
 - Identify YouTube embeds with the actual origin, report provider error codes, and add a sandboxed desktop-player fallback.

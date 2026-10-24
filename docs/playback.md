@@ -51,3 +51,7 @@ Automatic lyrics use LRCLIB with the current track metadata. YouTube, Spotify, a
 Optional corrections accept plain text or timed LRC. Offset controls adjust timing. Kinetic typography varies by line; word highlighting is estimated within a line rather than supplied word-level timing.
 
 On Windows, automatic computer-output capture uses SoundCard/WASAPI and sends PCM only to the local visualizer. It captures the selected system output, including other audible apps. Disable the computer-output checkbox to disconnect it. No microphone is used and no capture file is saved. **Share tab audio** is the browser fallback; choose the playing tab and enable audio sharing. Chrome/Edge are useful when the in-app browser cannot capture audio. Direct audio connects through Web Audio itself.
+
+**Audio spectrum bars** in Effects toggles the frequency bars along the bottom of the visuals. They read the same live audio analyzer as the themes, across generated tracks and connected external audio. They remain visible when controls hide, decay to silence when audio stops, and use gentler motion with reduced motion enabled.
+
+Spectrum settings include individual edges, top + bottom, left + right, all four sides, or a custom position with horizontal and vertical sliders. Mirror spectrum reflects frequency bars around the center. Bar height and spectrum width control the size without changing the music or other visual effects.

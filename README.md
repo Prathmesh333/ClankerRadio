@@ -8,6 +8,7 @@ A local music player that generates instrumental performances, runs Codex compos
 - Uses real Codex CLI calls for two competing composers, three rounds of peer criticism and revision, and an independent judge.
 - Keeps favorites and approved winners in a playlist, with symbolic duplicate detection and JSON downloads.
 - Defaults to real **Butterchurn / MilkDrop**, with 367 unique presets. Includes Three.js scenes, kinetic lyrics, and a Randomizer that changes effects every 28 seconds.
+- Adds live spectrum bars with mirrored layouts, edge placements, custom positioning, and adjustable size.
 - Offers display-sharp, UHD, and performance rendering without cropping the frame. Playback controls hide when idle. Automatic visual energy varies every theme, including MilkDrop.
 - Plays supported music links through provider embeds, looks up lyrics automatically, and connects their audio to the visuals.
 

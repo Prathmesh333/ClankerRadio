@@ -8,7 +8,7 @@ The desktop edition opens the player in a dedicated Electron window. It bundles 
 
 The Windows build produces:
 
-- `dist/desktop/Clanker-Radio-Setup-0.5.2.exe`: per-user installer with an optional desktop shortcut.
+- `dist/desktop/Clanker-Radio-Setup-0.5.3.exe`: per-user installer with an optional desktop shortcut.
 - `dist/desktop/win-unpacked/Clanker Radio.exe`: runnable app folder. Keep this executable with all adjacent files and the `resources/` directory.
 
 The current build is unsigned. Windows may show an unknown-publisher prompt. Code signing is a separate release step.
@@ -71,3 +71,5 @@ Desktop ad blocking is enabled before any provider page opens. **Clanker Radio â
 If a YouTube embed fails, its error message includes the provider error code. **Open desktop player** opens the original provider page in a separate sandboxed window using the same ad-blocked session. It avoids relying on an embedded player. Windows computer-output capture continues to drive the visuals; lyrics and timing can follow an exposed Windows media session. Provider account, content, and regional restrictions still apply. Leaving link playback closes this music window.
 
 This filtering cannot promise permanent zero ads across all services, especially ads delivered inside an ordinary media stream. The browser edition cannot inherit Electron's blocker; use a browser content blocker there. See [ad-blocking research](ad-blocking.md) for the source projects and tested boundaries.
+
+Provider players and their fallback links fade out after two idle seconds with the rest of the controls. Pointer movement, touch, or keyboard focus reveals them. Playback stays mounted and continues while hidden.

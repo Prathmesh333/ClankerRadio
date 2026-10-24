@@ -1,5 +1,6 @@
 "use client";
-import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import { type SpectrumSettings } from "../lib/spectrum-settings";
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type CSSProperties } from "react";
 import { spotifyAPI, soundcloudAPI, type SpotifyController, type SoundCloudWidget } from "../lib/embed-controllers";
 import { EffectsMenu } from "./effects-menu";
 import { DEFAULT_RENDER_QUALITY, type RenderQuality } from "../lib/render-quality";
@@ -24,10 +25,12 @@ function youtubeAPI(): Promise<YouTubeAPI> {
   });
 }
 
-export function ExternalMusic({ onClose, reducedMotion, autoEnergy = true, onAutoEnergy, intensity = .8, onIntensity }: { onClose(): void; reducedMotion: boolean; autoEnergy?: boolean; onAutoEnergy(value: boolean): void; intensity?: number; onIntensity(value: number): void }) {
-  const [desktopAvailable, setDesktopAvailable] = useState(false);
+const subscribeDesktop = () => () => {};
+
+export function ExternalMusic({ onClose, reducedMotion, spectrum, onSpectrum, spectrumSettings, onSpectrumSettings, autoEnergy = true, onAutoEnergy, intensity = .8, onIntensity }: { onClose(): void; reducedMotion: boolean; spectrum: boolean; onSpectrum(value: boolean): void; spectrumSettings: SpectrumSettings; onSpectrumSettings(value: SpectrumSettings): void; autoEnergy?: boolean; onAutoEnergy(value: boolean): void; intensity?: number; onIntensity(value: number): void }) {
+  const desktopAvailable = useSyncExternalStore(subscribeDesktop, () => Boolean(window.clankerDesktop), () => false);
   const [nativePlayer, setNativePlayer] = useState(false);
-  useEffect(() => { setDesktopAvailable(Boolean(window.clankerDesktop)); return () => { void window.clankerDesktop?.closeMusic().catch(() => {}); }; }, []);
+  useEffect(() => () => { void window.clankerDesktop?.closeMusic().catch(() => {}); }, []);
   const [link, setLink] = useState("");
   const [source, setSource] = useState<MusicSource | null>(null);
   const [editing, setEditing] = useState(true);
@@ -62,6 +65,7 @@ export function ExternalMusic({ onClose, reducedMotion, autoEnergy = true, onAut
   const currentVideo = useRef("");
   const resolvedTitle = useRef("");
   const settings = useRef<HTMLDialogElement>(null);
+  const providerHover = useRef(false);
   const idle = useRef<ReturnType<typeof setTimeout> | null>(null);
   const parsed = useMemo(() => parseLyrics(lyrics, lineSeconds), [lyrics, lineSeconds]);
   const lyricTime = time + offset;
@@ -73,7 +77,7 @@ export function ExternalMusic({ onClose, reducedMotion, autoEnergy = true, onAut
   const look = (Math.imul(index + 1, 2654435761) + designSeed) >>> 0;
   function reveal() {
     setControls(true); if (idle.current) clearTimeout(idle.current);
-    idle.current = setTimeout(() => setControls(false), 2000);
+    idle.current = setTimeout(() => { if (!providerHover.current) setControls(false); }, 2000);
   }
   useEffect(() => {
     if (editing) settings.current?.showModal(); else settings.current?.close();
@@ -254,8 +258,8 @@ export function ExternalMusic({ onClose, reducedMotion, autoEnergy = true, onAut
       setDesignSeed(crypto.getRandomValues(new Uint32Array(1))[0]); setNativePlayer(false); setError(""); setEditing(false); reveal();
     } catch (e) { setError((e as Error).message); }
   }
-  return <section className={`external-music ${controls || editing ? "external-controls-visible" : ""}`} onPointerMove={reveal} onFocusCapture={reveal} onKeyDown={reveal}>
-    <PerformanceVisual key={reactive ? "reactive" : "ambient"} player={audio} mode={mode} reducedMotion={reducedMotion} intensity={intensity} autoEnergy={autoEnergy} seed={designSeed} quality={quality} />
+  return <section className={`external-music ${controls || editing ? "external-controls-visible" : ""}`} onPointerMove={reveal} onPointerDown={reveal} onFocusCapture={reveal} onKeyDown={reveal}>
+    <PerformanceVisual spectrumSettings={spectrumSettings} spectrum={spectrum} key={reactive ? "reactive" : "ambient"} player={audio} mode={mode} reducedMotion={reducedMotion} intensity={intensity} autoEnergy={autoEnergy} seed={designSeed} quality={quality} />
     <div className="external-top external-controls">
       <button onClick={onClose}>← Generative radio</button>
       <span>{source?.provider ?? "Music links"} · {reactive ? "Audio connected" : "Ambient visuals"}</span>
@@ -266,7 +270,7 @@ export function ExternalMusic({ onClose, reducedMotion, autoEnergy = true, onAut
       <p aria-live="off">{words.map((word, i) => <span key={i} className={i <= Math.floor(progress * words.length) ? "lit" : ""} style={{ "--word-index": i } as CSSProperties}>{word}{" "}</span>)}</p>
       {next && <small>{next.text}</small>}
     </div>
-    {source && <div className={`provider-player provider-${source.provider.toLowerCase().replace(/ /g, "-")}`}>
+    {source && <div onMouseEnter={() => { providerHover.current = true; reveal(); }} onMouseLeave={() => { providerHover.current = false; reveal(); }} className={`provider-player provider-${source.provider.toLowerCase().replace(/ /g, "-")}`}>
       {nativePlayer ? <p className="provider-native-note">Playback is in the desktop music window.</p> : source.provider === "YouTube" ? <div ref={youtubeHost} /> : source.provider === "Spotify" ? <div ref={spotifyHost} /> : source.embed ? <iframe ref={providerFrame} key={source.embed} title={`${source.provider} music player`} src={source.embed} allow="autoplay; encrypted-media; fullscreen; picture-in-picture" allowFullScreen referrerPolicy="strict-origin-when-cross-origin" /> : <audio key={source.url} ref={media} src={source.url} crossOrigin="anonymous" controls onPlay={() => void connectDirect()} onError={() => setError("This audio URL cannot play here. Check the URL and its cross-origin permissions, or play it in another tab and share that tab’s audio.")} />}
       {desktopAvailable && source.provider === "YouTube" && <button className="desktop-provider-button" onClick={() => {
         setNativePlayer(true); setSynced(false);
@@ -278,7 +282,7 @@ export function ExternalMusic({ onClose, reducedMotion, autoEnergy = true, onAut
     <div className="external-bottom external-controls">
       <div className="external-actions">
         {source?.provider !== "Audio link" && <button onClick={() => void (reactive ? (setComputerAudio(false), disconnect()) : capture())}>{reactive ? "Disconnect audio" : "Share tab audio"}</button>}
-        <EffectsMenu autoEnergy={autoEnergy} onAutoEnergy={onAutoEnergy} intensity={intensity} onIntensity={onIntensity} external mode={mode} onMode={setMode} quality={quality} onQuality={setQuality} onRemix={() => {
+        <EffectsMenu spectrumSettings={spectrumSettings} onSpectrumSettings={onSpectrumSettings} spectrum={spectrum} onSpectrum={onSpectrum} autoEnergy={autoEnergy} onAutoEnergy={onAutoEnergy} intensity={intensity} onIntensity={onIntensity} external mode={mode} onMode={setMode} quality={quality} onQuality={setQuality} onRemix={() => {
           if (mode === "randomizer") window.dispatchEvent(new Event("visualizer:next"));
               else if (mode === "random") window.dispatchEvent(new Event("visualizer:preset-next"));
           else setDesignSeed(n => (n + 1) >>> 0);

@@ -1,6 +1,8 @@
 "use client";
+import { type SpectrumSettings } from "../lib/spectrum-settings";
 import { useEffect, useRef, useState, useMemo, type RefObject } from "react";
 import { renderSize, DEFAULT_RENDER_QUALITY, type RenderQuality } from "../lib/render-quality";
+import { AudioSpectrum } from "./audio-spectrum";
 import { VisualEnergy } from "../lib/visual-energy";
 import { ShapeVisual } from "./shape-visual";
 import { MilkdropVisual } from "./milkdrop-visual";
@@ -65,14 +67,15 @@ void main(){
 }`;
 
 type VisualProps = {
-  player: RefObject<VisualAudio | null>; mode: VisualMode; intensity: number; reducedMotion: boolean; seed: number; quality?: RenderQuality; autoEnergy?: boolean; energy?: VisualEnergy;
+  player: RefObject<VisualAudio | null>; mode: VisualMode; intensity: number; reducedMotion: boolean; seed: number; quality?: RenderQuality; spectrum?: boolean; spectrumSettings?: SpectrumSettings; autoEnergy?: boolean; energy?: VisualEnergy;
 };
 
 export function PerformanceVisual(input: VisualProps) {
   const [energy] = useState(() => new VisualEnergy());
   const props = { ...input, autoEnergy: input.autoEnergy ?? true, energy };
-  if (props.mode === "randomizer") return <RandomizerVisual {...props} key={props.seed} />;
-  return <SelectedVisual {...props} />;
+  return <>{props.mode === "randomizer" ? <RandomizerVisual {...props} key={props.seed} /> : <SelectedVisual {...props} />}
+    {input.spectrum !== false && <AudioSpectrum settings={input.spectrumSettings} player={input.player} reducedMotion={input.reducedMotion} />}
+  </>;
 }
 const effectSequence = ["crystals", "random", "aurora", "hyperspace", "nebula", "galaxy", "solar", "prism"] as const;
 function RandomizerVisual(props: VisualProps) {

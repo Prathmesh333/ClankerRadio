@@ -1,4 +1,5 @@
 "use client";
+import { DEFAULT_SPECTRUM, type SpectrumSettings } from "../lib/spectrum-settings";
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { VisualEnergyControl } from "../components/visual-energy-control";
@@ -35,6 +36,8 @@ export default function Studio() {
   const [quality, setQuality] = useState<RenderQuality>(DEFAULT_RENDER_QUALITY);
   const [visualVariation, setVisualVariation] = useState(0);
   const [intensity, setIntensity] = useState(0.8);
+  const [spectrumSettings, setSpectrumSettings] = useState<SpectrumSettings>(DEFAULT_SPECTRUM);
+  const [spectrum, setSpectrum] = useState(true);
   const [autoEnergy, setAutoEnergy] = useState(true);
   const [reducedMotion, setReducedMotion] = useState(false);
   const [recording, setRecording] = useState(false);
@@ -368,7 +371,7 @@ export default function Studio() {
     }
   }
 
-  if (external) return <main className="player-shell external-shell"><ExternalMusic autoEnergy={autoEnergy} onAutoEnergy={setAutoEnergy} intensity={intensity} onIntensity={setIntensity} reducedMotion={reducedMotion} onClose={() => setExternal(false)} /></main>;
+  if (external) return <main className="player-shell external-shell"><ExternalMusic spectrum={spectrum} onSpectrum={setSpectrum} spectrumSettings={spectrumSettings} onSpectrumSettings={setSpectrumSettings} autoEnergy={autoEnergy} onAutoEnergy={setAutoEnergy} intensity={intensity} onIntensity={setIntensity} reducedMotion={reducedMotion} onClose={() => setExternal(false)} /></main>;
 
   return (
     <main className={`player-shell ${recording ? "recording" : ""} ${controlsVisible || panel ? "controls-visible" : ""}`}
@@ -415,6 +418,8 @@ export default function Studio() {
       <section className="live-stage">
         <PerformanceVisual
           player={player}
+          spectrumSettings={spectrumSettings}
+          spectrum={spectrum}
           mode={mode}
           autoEnergy={autoEnergy}
           intensity={intensity}
@@ -540,7 +545,7 @@ export default function Studio() {
                 }}
               />
             </label>
-            <EffectsMenu autoEnergy={autoEnergy} onAutoEnergy={setAutoEnergy} intensity={intensity} onIntensity={setIntensity} mode={mode} onMode={setMode} quality={quality} onQuality={setQuality} onRemix={() => {
+            <EffectsMenu spectrum={spectrum} onSpectrum={setSpectrum} spectrumSettings={spectrumSettings} onSpectrumSettings={setSpectrumSettings} autoEnergy={autoEnergy} onAutoEnergy={setAutoEnergy} intensity={intensity} onIntensity={setIntensity} mode={mode} onMode={setMode} quality={quality} onQuality={setQuality} onRemix={() => {
               if (mode === "randomizer") window.dispatchEvent(new Event("visualizer:next"));
               else if (mode === "random") window.dispatchEvent(new Event("visualizer:preset-next"));
               else setVisualVariation(n => n + 1);
