@@ -12,6 +12,7 @@ export type PlayerPreferences = {
   spectrum: boolean;
   spectrumSettings: SpectrumSettings;
   gentleMotion: boolean | null;
+  browserPlayback: boolean;
   showLyrics: boolean;
   beatSync: boolean;
   crossfadeS: number;
@@ -27,6 +28,7 @@ export const DEFAULT_PREFERENCES: PlayerPreferences = {
   spectrum: true,
   spectrumSettings: DEFAULT_SPECTRUM,
   gentleMotion: null,
+  browserPlayback: false,
   showLyrics: true,
   beatSync: true,
   crossfadeS: 3,

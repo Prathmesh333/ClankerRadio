@@ -13,42 +13,82 @@ from fastapi.responses import StreamingResponse
 router = APIRouter(prefix="/api")
 
 
-@router.get("/audio/now-playing")
-async def now_playing(title: str = Query(default="", max_length=300)):
-    """Apple/other players can expose their clock through Windows media sessions."""
-    if sys.platform != "win32":
-        return {"status": "unavailable"}
-    try:
-        from datetime import datetime, timezone
-        from difflib import SequenceMatcher
+async def session_now_playing(manager, title="", player="any"):
+    """Select a usable song session, including a browser that is not Windows' current session."""
+    from datetime import datetime, timezone
+    from difflib import SequenceMatcher
 
+    candidates = []
+    current = manager.get_current_session()
+    for session in manager.get_sessions():
+        try:
+            app_id = session.source_app_user_model_id
+            if "clanker" in app_id.casefold():
+                continue
+            if player == "browser" and not any(
+                browser in app_id.casefold() for browser in ("chrome", "msedge", "firefox", "brave", "opera")
+            ):
+                continue
+            media = await session.try_get_media_properties_async()
+            if not media.title or (
+                title and SequenceMatcher(None, title.casefold(), media.title.casefold()).ratio() < 0.65
+            ):
+                continue
+            timeline = session.get_timeline_properties()
+            duration = timeline.end_time.total_seconds() - timeline.start_time.total_seconds()
+            # Live previews (including a stream dashboard) have no finite song clock.
+            if player == "browser" and duration <= 0:
+                continue
+            playing = int(session.get_playback_info().playback_status) == 4
+            position = timeline.position.total_seconds() - timeline.start_time.total_seconds()
+            if playing:
+                position += max(0, (datetime.now(timezone.utc) - timeline.last_updated_time).total_seconds())
+            candidates.append(
+                (
+                    playing,
+                    session == current,
+                    {
+                        "status": "connected",
+                        "title": media.title,
+                        "artist": media.artist,
+                        "position": max(0, min(position, duration) if duration > 0 else position),
+                        "duration": max(0, duration),
+                        "playing": playing,
+                        "sourceApp": app_id,
+                    },
+                )
+            )
+        except Exception:
+            # A closed browser tab must not hide another valid music session.
+            continue
+    if candidates:
+        return max(candidates, key=lambda item: item[:2])[2]
+    return {
+        "status": "waiting",
+        "message": (
+            "Waiting for a browser song. Play YouTube Music in Chrome; pause the Kick dashboard preview "
+            "if it replaces Chrome’s music session."
+            if player == "browser"
+            else "Waiting for a Windows music session."
+        ),
+    }
+
+
+@router.get("/audio/now-playing")
+async def now_playing(
+    title: str = Query(default="", max_length=300),
+    player: str = Query(default="any", pattern="^(any|browser)$"),
+):
+    """Read metadata and playback clock exposed by Windows, without reading browser pages."""
+    if sys.platform != "win32":
+        return {"status": "unavailable", "message": "Browser lyric sync requires Windows media sessions."}
+    try:
         from winrt.windows.media.control import GlobalSystemMediaTransportControlsSessionManager
 
         manager = await GlobalSystemMediaTransportControlsSessionManager.request_async()
-        sessions = manager.get_sessions() if title else [manager.get_current_session()]
-        for session in sessions:
-            if session is None:
-                continue
-            media = await session.try_get_media_properties_async()
-            if title and SequenceMatcher(None, title.casefold(), media.title.casefold()).ratio() < 0.65:
-                continue
-            timeline = session.get_timeline_properties()
-            playing = int(session.get_playback_info().playback_status) == 4
-            position = timeline.position.total_seconds()
-            if playing:
-                position += max(0, (datetime.now(timezone.utc) - timeline.last_updated_time).total_seconds())
-            duration = timeline.end_time.total_seconds()
-            return {
-                "status": "connected",
-                "title": media.title,
-                "artist": media.artist,
-                "position": min(position, duration) if duration > 0 else position,
-                "duration": duration,
-                "playing": playing,
-            }
-        return {"status": "waiting"}
+        return await session_now_playing(manager, title, player)
     except Exception:
-        return {"status": "unavailable"}
+        return {"status": "unavailable", "message": "Windows now-playing metadata is unavailable."}
 
 
 def capture_output(messages, stopped):

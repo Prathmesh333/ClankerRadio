@@ -113,6 +113,7 @@ export function ExternalMusic({
     () => false,
   );
   const [nativePlayer, setNativePlayer] = useState(false);
+  const [sessionStatus, setSessionStatus] = useState("");
   useEffect(
     () => () => {
       void window.clankerDesktop?.closeMusic().catch(() => {});
@@ -121,6 +122,7 @@ export function ExternalMusic({
   );
   const [link, setLink] = useState("");
   const [source, setSource] = useState<MusicSource | null>(null);
+  const browserPlayback = preferences.browserPlayback && Boolean(source?.embed);
   const [editing, setEditing] = useState(true);
   const showLyrics = preferences.showLyrics,
     setShowLyrics = (showLyrics: boolean) => onPreferences({ showLyrics });
@@ -207,18 +209,27 @@ export function ExternalMusic({
     }, 2000);
   }, []);
 
-  useEffect(()=>{
-    window.addEventListener("pointermove",reveal,{capture:true,passive:true});
-    window.addEventListener("pointerdown",reveal,{capture:true,passive:true});
-    return()=>{window.removeEventListener("pointermove",reveal,true);window.removeEventListener("pointerdown",reveal,true);};
-  },[reveal]);
+  useEffect(() => {
+    window.addEventListener("pointermove", reveal, {
+      capture: true,
+      passive: true,
+    });
+    window.addEventListener("pointerdown", reveal, {
+      capture: true,
+      passive: true,
+    });
+    return () => {
+      window.removeEventListener("pointermove", reveal, true);
+      window.removeEventListener("pointerdown", reveal, true);
+    };
+  }, [reveal]);
   useEffect(() => {
     if (editing) settings.current?.showModal();
     else settings.current?.close();
   }, [editing]);
   useEffect(() => {
     const timer = setInterval(() => {
-      if (nativePlayer) return;
+      if (nativePlayer || browserPlayback) return;
       if (source?.provider === "YouTube" && yt.current) {
         const position = yt.current.getCurrentTime();
         if (Number.isFinite(position)) setTime(position);
@@ -247,10 +258,10 @@ export function ExternalMusic({
       else if (running) setTime((t) => t + 0.1);
     }, 100);
     return () => clearInterval(timer);
-  }, [source, running, nativePlayer]);
+  }, [source, running, nativePlayer, browserPlayback]);
   useEffect(() => {
     let cancelled = false;
-    if (source?.provider === "YouTube" && !nativePlayer)
+    if (source?.provider === "YouTube" && !nativePlayer && !browserPlayback)
       void youtubeAPI()
         .then((api) => {
           if (cancelled || !youtubeHost.current || !source.embed) return;
@@ -279,9 +290,9 @@ export function ExternalMusic({
       yt.current = null;
       currentVideo.current = "";
     };
-  }, [source, nativePlayer]);
+  }, [source, nativePlayer, browserPlayback]);
   useEffect(() => {
-    if (!source || !automatic) return;
+    if (!source || !automatic || (browserPlayback && !track.title)) return;
     const controller = new AbortController();
     const timer = setTimeout(() => {
       setLyricStatus("Finding synchronized lyrics…");
@@ -313,12 +324,12 @@ export function ExternalMusic({
       clearTimeout(timer);
       controller.abort();
     };
-  }, [source, track, automatic]);
+  }, [source, track, automatic, browserPlayback]);
   useEffect(() => {
     let disposed = false;
     let spotify: SpotifyController | undefined,
       widget: SoundCloudWidget | undefined;
-    if (source?.provider === "Spotify")
+    if (source?.provider === "Spotify" && !browserPlayback)
       void spotifyAPI()
         .then((api) => {
           if (disposed || !spotifyHost.current) return;
@@ -364,7 +375,7 @@ export function ExternalMusic({
         .catch((error) => {
           if (!disposed) setError(error.message);
         });
-    if (source?.provider === "SoundCloud")
+    if (source?.provider === "SoundCloud" && !browserPlayback)
       void soundcloudAPI()
         .then((api) => {
           if (disposed || !providerFrame.current) return;
@@ -409,16 +420,20 @@ export function ExternalMusic({
         widget?.unbind(event),
       );
     };
-  }, [source]);
+  }, [source, browserPlayback]);
   useEffect(() => {
-    if (!source || (source.provider !== "Apple Music" && !nativePlayer)) return;
+    if (
+      !source ||
+      (source.provider !== "Apple Music" && !nativePlayer && !browserPlayback)
+    )
+      return;
     const controller = new AbortController();
     let busy = false;
     const timer = setInterval(() => {
       if (busy) return;
       busy = true;
       fetch(
-        `/api/audio/now-playing?${new URLSearchParams({ title: /\/song\/|[?&]i=/.test(source.url) ? resolvedTitle.current : "" })}`,
+        `/api/audio/now-playing?${new URLSearchParams({ title: !browserPlayback && /\/song\/|[?&]i=/.test(source.url) ? resolvedTitle.current : "", player: browserPlayback ? "browser" : "any" })}`,
         { signal: controller.signal },
       )
         .then((r) => r.json())
@@ -426,8 +441,23 @@ export function ExternalMusic({
           if (controller.signal.aborted) return;
           if (data.status !== "connected") {
             setSynced(false);
+            setSessionStatus(
+              data.message || "Waiting for the browser’s current song…",
+            );
+            if (browserPlayback) {
+              setLyrics("");
+              if (currentVideo.current)
+                setTrack({
+                  url: source.url,
+                  title: "",
+                  artist: "",
+                  duration: 0,
+                });
+              currentVideo.current = "";
+            }
             return;
           }
+          setSessionStatus(`${data.sourceApp || "Windows"} · ${data.title}`);
           setSynced(true);
           providerTime.current = data.position;
           setTime(data.position);
@@ -447,7 +477,12 @@ export function ExternalMusic({
             });
           }
         })
-        .catch(() => {})
+        .catch(() => {
+          if (!controller.signal.aborted) {
+            setSynced(false);
+            setSessionStatus("Could not read Windows now-playing metadata.");
+          }
+        })
         .finally(() => {
           busy = false;
         });
@@ -456,7 +491,7 @@ export function ExternalMusic({
       clearInterval(timer);
       controller.abort();
     };
-  }, [source, nativePlayer]);
+  }, [source, nativePlayer, browserPlayback]);
   useEffect(() => {
     if (!source?.embed || !computerAudio) return;
     const controller = new AbortController();
@@ -694,7 +729,11 @@ export function ExternalMusic({
           }}
           className={`provider-player provider-${source.provider.toLowerCase().replace(/ /g, "-")}`}
         >
-          {nativePlayer ? (
+          {browserPlayback ? (
+            <p className="provider-native-note">
+              Following music in your browser
+            </p>
+          ) : nativePlayer ? (
             <p className="provider-native-note">Playing in desktop player</p>
           ) : source.provider === "YouTube" ? (
             <div ref={youtubeHost} />
@@ -739,27 +778,31 @@ export function ExternalMusic({
               }}
             />
           )}
-          {desktopAvailable && source.provider === "YouTube" && (
-            <button
-              className="desktop-provider-button"
-              onClick={(event) => {
-                if (event.detail > 0) event.currentTarget.blur();
-                setNativePlayer(true);
-                setSynced(false);
-                void window.clankerDesktop
-                  ?.openMusic(source.url)
-                  .then(() => {
-                    setError("");
-                  })
-                  .catch((error) => {
-                    setNativePlayer(false);
-                    setError(error.message);
-                  });
-              }}
-            >
-              {nativePlayer ? "Show desktop player ↗" : "Open desktop player ↗"}
-            </button>
-          )}
+          {desktopAvailable &&
+            !browserPlayback &&
+            source.provider === "YouTube" && (
+              <button
+                className="desktop-provider-button"
+                onClick={(event) => {
+                  if (event.detail > 0) event.currentTarget.blur();
+                  setNativePlayer(true);
+                  setSynced(false);
+                  void window.clankerDesktop
+                    ?.openMusic(source.url)
+                    .then(() => {
+                      setError("");
+                    })
+                    .catch((error) => {
+                      setNativePlayer(false);
+                      setError(error.message);
+                    });
+                }}
+              >
+                {nativePlayer
+                  ? "Show desktop player ↗"
+                  : "Open desktop player ↗"}
+              </button>
+            )}
           <a href={source.url} target="_blank" rel="noreferrer">
             Open on {source.provider} ↗
           </a>
@@ -832,7 +875,9 @@ export function ExternalMusic({
           <span className="auto-lyric-status">
             {lyricSource ? (
               <a href={lyricSource} target="_blank" rel="noreferrer">
-                {lyricStatus}
+                {browserPlayback && sessionStatus
+                  ? `${sessionStatus} · ${lyricStatus}`
+                  : lyricStatus}
               </a>
             ) : (
               lyricStatus
@@ -919,6 +964,43 @@ export function ExternalMusic({
               tab audio for reactive visuals. Some services offer previews or
               require sign-in.
             </p>
+            {desktopAvailable && (
+              <>
+                <label className="check-label">
+                  <input
+                    type="checkbox"
+                    checked={preferences.browserPlayback}
+                    onChange={(event) => {
+                      onPreferences({ browserPlayback: event.target.checked });
+                      setLyrics("");
+                      setTrack({
+                        url: source?.url || "",
+                        title: "",
+                        artist: "",
+                        duration: 0,
+                      });
+                      currentVideo.current = "";
+                      setTime(0);
+                      setSynced(false);
+                      setAutomatic(true);
+                      setNativePlayer(false);
+                      void window.clankerDesktop?.closeMusic();
+                    }}
+                  />{" "}
+                  Music is playing in Chrome or another browser
+                </label>
+                <p>
+                  Follows the browser’s song title and clock through Windows.
+                  Keep YouTube Music playing; pause the Kick dashboard preview
+                  if it takes over the browser’s media session.
+                </p>
+                {preferences.browserPlayback && (
+                  <p role="status">
+                    {sessionStatus || "Waiting for a browser song…"}
+                  </p>
+                )}
+              </>
+            )}
             <label className="check-label">
               <input
                 type="checkbox"
@@ -947,7 +1029,11 @@ export function ExternalMusic({
               />{" "}
               Find lyrics automatically
             </label>
-            <p>{lyricStatus}</p>
+            <p>
+              {browserPlayback && sessionStatus
+                ? `${sessionStatus} · ${lyricStatus}`
+                : lyricStatus}
+            </p>
             <details className="lyric-corrections">
               <summary>Optional lyric corrections</summary>
               <label htmlFor="lyric-input">

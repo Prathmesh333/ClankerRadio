@@ -33,8 +33,10 @@ def test_windows_clock_uses_matching_session_and_elapsed_time(monkeypatch):
         return types.SimpleNamespace(title="Neon Signal", artist="Orbit")
 
     session = types.SimpleNamespace(
+        source_app_user_model_id="Chrome",
         try_get_media_properties_async=media,
         get_timeline_properties=lambda: types.SimpleNamespace(
+            start_time=timedelta(),
             position=timedelta(seconds=10),
             end_time=timedelta(seconds=200),
             last_updated_time=datetime.now(timezone.utc) - timedelta(seconds=1),

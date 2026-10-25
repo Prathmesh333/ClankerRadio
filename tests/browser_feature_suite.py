@@ -11,6 +11,7 @@ import time
 import urllib.request
 import wave
 from pathlib import Path
+from urllib.parse import parse_qs, urlsplit
 
 from playwright.sync_api import expect, sync_playwright
 
@@ -122,6 +123,33 @@ try:
         page = browser.new_page(viewport={"width": 1280, "height": 900})
         errors = []
         page.on("pageerror", lambda error: errors.append(str(error)))
+        page.add_init_script("window.clankerDesktop={closeMusic:async()=>{},openMusic:async()=>{}}")
+        session = {
+            "status": "connected",
+            "sourceApp": "Chrome",
+            "title": "First browser song",
+            "artist": "Orbit",
+            "position": 12,
+            "duration": 200,
+            "playing": True,
+        }
+        lyric_requests = []
+        page.route("**/api/audio/now-playing?**", lambda route: route.fulfill(json=session))
+
+        def lyric_response(route):
+            title = parse_qs(urlsplit(route.request.url).query).get("title", [""])[0]
+            lyric_requests.append(title)
+            prefix = "Second" if title == "Second browser song" else "Chrome"
+            route.fulfill(
+                json={
+                    "status": "synced",
+                    "title": title,
+                    "artist": "Orbit",
+                    "message": "Synchronized fixture lyrics",
+                    "lyrics": f"[00:00.00]{prefix} intro\n[00:10.00]{prefix} chorus",
+                }
+            )
+
         page.add_init_script("""window.YT={Player:class{
             constructor(frame,options){this.frame=frame;setTimeout(()=>options.events.onReady(),20);}
             getCurrentTime(){return 5;}getPlayerState(){return 1;}
@@ -131,12 +159,7 @@ try:
             "https://www.youtube.com/embed/**",
             lambda route: route.fulfill(content_type="text/html", body="<body>Playlist fixture</body>"),
         )
-        page.route(
-            "**/api/lyrics?**",
-            lambda route: route.fulfill(
-                json={"status": "not_found", "message": "No fixture lyrics", "lyrics": ""}
-            ),
-        )
+        page.route("**/api/lyrics?**", lyric_response)
         page.goto(origin)
         page.wait_for_function("document.querySelector('.player-brand img')?.complete")
         page.locator(".effects-menu > summary").click()
@@ -151,7 +174,7 @@ try:
         page.wait_for_timeout(800)
         page.reload()
         page.locator(".effects-menu > summary").click()
-        expect(page.get_by_label("Spectrum position", exact=True)).to_have_value("all")
+        expect(page.get_by_label("Spectrum position", exact=True)).to_have_value("all", timeout=30000)
         expect(page.get_by_label("Mirror spectrum", exact=True)).to_be_checked()
         expect(page.get_by_label("Render quality", exact=True)).to_have_value("performance")
         page.locator(".effects-menu > summary").click()
@@ -167,6 +190,19 @@ try:
         entries = page.request.get(origin + "/api/library").json()
         assert len(entries) == 1 and entries[0]["kind"] == "link", entries
         page.get_by_role("button", name="Link & lyrics", exact=True).click()
+        page.get_by_label("Music is playing in Chrome or another browser").check()
+        page.get_by_role("button", name="Apply lyrics", exact=True).click()
+        expect(page.locator(".provider-player iframe")).to_have_count(0)
+        expect(page.locator(".kinetic-lyrics p")).to_have_text("Chrome chorus", timeout=15000)
+        session.update(position=2, playing=False)
+        expect(page.locator(".kinetic-lyrics p")).to_have_text("Chrome intro", timeout=10000)
+        session.update(title="Second browser song", position=12, playing=True)
+        expect(page.locator(".kinetic-lyrics p")).to_have_text("Second chorus", timeout=10000)
+        assert "First browser song" in lyric_requests and "Second browser song" in lyric_requests
+        session.update(status="waiting", message="Waiting for a browser song")
+        expect(page.locator(".kinetic-lyrics p")).to_have_text("", timeout=10000)
+        page.get_by_role("button", name="Link & lyrics", exact=True).click()
+        page.get_by_label("Music is playing in Chrome or another browser").uncheck()
         page.locator("input[type=file]").first.set_input_files(
             [str(output / "Tone one.wav"), str(output / "Tone two.wav")]
         )
@@ -186,7 +222,8 @@ try:
         )
         page.wait_for_function(
             "Array.from(document.querySelectorAll('.local-playback audio'))"
-            ".filter(audio=>!audio.paused).length===1",timeout=8000
+            ".filter(audio=>!audio.paused).length===1",
+            timeout=8000,
         )
         page.locator(".effects-menu > summary").click()
         recorder_button = page.get_by_role("button", name="Recording tools", exact=True)
@@ -202,7 +239,7 @@ try:
         expect(download).to_be_visible(timeout=15000)
         with page.expect_download() as recording_download:
             download.click()
-        recording_download.value.save_as(str(output/"vertical-recording.webm"))
+        recording_download.value.save_as(str(output / "vertical-recording.webm"))
         result = page.evaluate(
             """async url=>{
               const blob=await(await fetch(url)).blob();
@@ -244,4 +281,4 @@ finally:
             subprocess.run(
                 ["taskkill", "/PID", str(process.pid), "/T", "/F"], capture_output=True, check=False
             )
-print(f"PASS: saved links/scenes, file imports, crossfade, vertical WebM, and reload persistence. {output}")
+print(f"PASS: browser lyrics, library, crossfade, recording and persistence. {output}")

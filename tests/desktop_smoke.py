@@ -54,9 +54,10 @@ with (output / "desktop.log").open("wb") as log:
             assert page.request.get(origin + "/icon.ico").ok
             preferences = page.request.get(origin + "/api/settings/player")
             assert preferences.ok and preferences.json()["crossfadeS"] == 3
-            saved = page.request.post(origin + "/api/library/links", data={
-                "url": "https://music.youtube.com/playlist?list=PLKBOD9JXe71Y&si=smoke"
-            })
+            saved = page.request.post(
+                origin + "/api/library/links",
+                data={"url": "https://music.youtube.com/playlist?list=PLKBOD9JXe71Y&si=smoke"},
+            )
             assert saved.ok, saved.text()
             assert len(page.request.get(origin + "/api/library").json()) == 1
             expect(page.locator(".milkdrop-canvas canvas")).to_be_visible(timeout=30000)
@@ -82,11 +83,14 @@ with (output / "desktop.log").open("wb") as log:
             page.get_by_role("button", name="Stop video recording", exact=True).click()
             clip = page.get_by_role("link", name="Download recording", exact=True)
             expect(clip).to_be_visible(timeout=15000)
-            encoded = page.evaluate("""async url=>{
+            encoded = page.evaluate(
+                """async url=>{
                 const blob=await(await fetch(url)).blob();
                 return await new Promise(resolve=>{const reader=new FileReader();
                   reader.onload=()=>resolve(reader.result.split(',')[1]);reader.readAsDataURL(blob)});
-            }""", clip.get_attribute("href"))
+            }""",
+                clip.get_attribute("href"),
+            )
             recording = base64.b64decode(encoded)
             assert len(recording) > 5000 and recording[:4] == bytes([26, 69, 223, 163])
             (output / "milkdrop-recording.webm").write_bytes(recording)
@@ -218,6 +222,32 @@ with (output / "desktop.log").open("wb") as log:
             expect(page.locator(".provider-player")).to_have_css("opacity", "0", timeout=8000)
             page.get_by_role("button", name="Open desktop player", exact=False).focus()
             expect(page.locator(".provider-player")).to_have_css("opacity", "1")
+            actual_session = page.request.get(origin + "/api/audio/now-playing?player=browser")
+            assert actual_session.ok and actual_session.json()["status"] in {
+                "connected",
+                "waiting",
+                "unavailable",
+            }
+            browser_session = {
+                "status": "connected",
+                "title": "Browser song",
+                "artist": "Orbit",
+                "position": 9,
+                "duration": 200,
+                "playing": True,
+                "sourceApp": "Chrome",
+            }
+            page.route("**/api/audio/now-playing?**", lambda route: route.fulfill(json=browser_session))
+            page.get_by_role("button", name="Link & lyrics", exact=True).click()
+            page.get_by_label("Music is playing in Chrome or another browser").check()
+            page.get_by_role("button", name="Apply lyrics", exact=True).click()
+            expect(page.locator(".provider-player iframe")).to_have_count(0)
+            expect(page.locator(".kinetic-lyrics p")).to_have_text("दिल से बजता संगीत ", timeout=15000)
+            browser_session.update(position=2, playing=False)
+            expect(page.locator(".kinetic-lyrics p")).to_have_text("We light up the night ", timeout=10000)
+            page.screenshot(path=str(output / "chrome-lyrics.png"))
+            page.wait_for_timeout(800)
+            assert page.request.get(origin + "/api/settings/player").json()["browserPlayback"] is True
             page.close()
         process.wait(timeout=20)
         time.sleep(1)

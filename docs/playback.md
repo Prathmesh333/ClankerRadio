@@ -44,6 +44,13 @@ Calls use ephemeral, read-only CLI processes. Prompts go through stdin; generate
 
 ## Music links and automatic lyrics
 
+### YouTube Music in a separate Chrome tab
+
+In the Windows desktop app, open **Link & lyrics**, paste the music/playlist URL, and enable **Music is playing in Chrome or another browser**. Keep **Connect Windows computer audio automatically**, **Show lyrics**, and **Find lyrics automatically** enabled. The embedded player is removed in this mode so it cannot overwrite Chrome’s song clock or play a second copy. The preference is saved.
+
+Play the song in Chrome. The app follows the title, artist, playback position, seeks, pauses, and track changes exposed through Windows media sessions. The current song and session status appear with the lyric status. No browser page contents or login cookies are read. If Windows exposes only your Kick dashboard preview, pause/mute the preview and resume the song in YouTube Music; Chrome may expose one active media session. Live sessions without a finite song duration are ignored rather than treated as music. Lyrics still depend on LRCLIB having a matching result. This mode requires Windows; the browser-only app does not directly read another tab’s metadata.
+
+
 Open **Link** and paste a canonical YouTube video or playlist, Spotify track/album/playlist, Apple Music song/album/playlist, SoundCloud URL, or direct audio URL. Provider playback and navigation remain in a visible embed. Provider accounts, region restrictions, previews, and embedding policies still apply. Expand short links before pasting them. Direct audio requires the host's CORS permission.
 
 Automatic lyrics use LRCLIB with the current track metadata. YouTube, Spotify, and SoundCloud adapters follow their exposed playback clocks and track changes. Apple Music can use an available Windows now-playing session; apps that do not publish a session cannot supply that clock. Plain lyrics use approximate line timing; missing, instrumental, and service-error states are shown explicitly. Lyric results are cached in memory, not saved as files.

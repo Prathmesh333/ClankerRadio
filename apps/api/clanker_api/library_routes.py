@@ -74,6 +74,7 @@ class PlayerPreferences(BaseModel):
     spectrum: bool = True
     spectrumSettings: Spectrum = Field(default_factory=Spectrum)
     gentleMotion: bool | None = None
+    browserPlayback: bool = False
     showLyrics: bool = True
     beatSync: bool = True
     crossfadeS: float = Field(default=3, ge=0, le=8)

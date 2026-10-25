@@ -1,5 +1,10 @@
 # Changes
 
+## 0.6.1 — 25 October 2026
+
+- Add saved browser-playback mode for lyrics and visuals while music plays in a separate Chrome tab.
+- Read browser song metadata and clocks from Windows media sessions, follow track changes and seeks, and ignore live dashboard previews and the app’s own playback.
+
 ## Unreleased — 24 October 2026
 
 - Version 0.6.0: persist music links, imported files, player preferences, and named visual scenes in SQLite.
