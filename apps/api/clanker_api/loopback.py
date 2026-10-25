@@ -3,6 +3,7 @@
 import asyncio
 import base64
 import json
+import math
 import queue
 import sys
 import threading
@@ -39,10 +40,16 @@ async def session_now_playing(manager, title="", player="any"):
             # Live previews (including a stream dashboard) have no finite song clock.
             if player == "browser" and duration <= 0:
                 continue
-            playing = int(session.get_playback_info().playback_status) == 4
+            info = session.get_playback_info()
+            playing = int(info.playback_status) == 4
+            rate = getattr(info, "playback_rate", None)
+            rate = float(rate) if rate is not None else 1.0
+            if not math.isfinite(rate) or not 0 <= rate <= 16:
+                rate = 1.0
+            sampled_at = datetime.now(timezone.utc)
             position = timeline.position.total_seconds() - timeline.start_time.total_seconds()
             if playing:
-                position += max(0, (datetime.now(timezone.utc) - timeline.last_updated_time).total_seconds())
+                position += max(0, (sampled_at - timeline.last_updated_time).total_seconds()) * rate
             candidates.append(
                 (
                     playing,
@@ -54,6 +61,8 @@ async def session_now_playing(manager, title="", player="any"):
                         "position": max(0, min(position, duration) if duration > 0 else position),
                         "duration": max(0, duration),
                         "playing": playing,
+                        "playbackRate": rate,
+                        "sampledAtMs": sampled_at.timestamp() * 1000,
                         "sourceApp": app_id,
                     },
                 )

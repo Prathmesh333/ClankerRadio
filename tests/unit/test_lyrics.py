@@ -58,3 +58,11 @@ def test_plain_and_unavailable_results_are_explicit(monkeypatch):
 
     monkeypatch.setattr(lyrics, "fetch_json", fail)
     assert lyrics.lookup("", "Neon Signal", "Orbit", 200, 1)["status"] == "unavailable"
+
+
+def test_different_recording_duration_is_disclosed(monkeypatch):
+    lyrics.lookup.cache_clear()
+    monkeypatch.setattr(lyrics, "fetch_json", lambda *args: [record(duration=200)])
+    result = lyrics.lookup("", "Neon Signal", "Orbit", 230, 1)
+    assert result["status"] == "synced" and result["duration"] == 200
+    assert "Recording lengths differ" in result["timingWarning"]

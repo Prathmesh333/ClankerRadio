@@ -7,7 +7,7 @@ import re
 import uuid
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Literal
+from typing import Annotated, Literal
 from urllib.parse import parse_qs, urlencode, urlsplit, urlunsplit
 
 from fastapi import APIRouter, HTTPException, Query, Request
@@ -74,6 +74,9 @@ class PlayerPreferences(BaseModel):
     spectrum: bool = True
     spectrumSettings: Spectrum = Field(default_factory=Spectrum)
     gentleMotion: bool | None = None
+    lyricOffsets: dict[Annotated[str, Field(max_length=600)], Annotated[float, Field(ge=-120, le=120)]] = (
+        Field(default_factory=dict, max_length=128)
+    )
     browserPlayback: bool = False
     showLyrics: bool = True
     beatSync: bool = True

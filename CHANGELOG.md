@@ -1,5 +1,11 @@
 # Changes
 
+## 0.6.2 — 25 October 2026
+
+- Respect browser playback speed and smoothly interpolate the Windows lyric clock between samples.
+- Add a direct Lyrics on/off button, clear delay/advance controls, line-to-vocal alignment, and per-recording saved timing corrections.
+- Flag differing recording lengths rather than implying every music-video edit matches the lyric recording.
+
 ## 0.6.1 — 25 October 2026
 
 - Add saved browser-playback mode for lyrics and visuals while music plays in a separate Chrome tab.

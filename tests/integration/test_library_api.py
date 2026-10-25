@@ -108,3 +108,14 @@ def test_preferences_and_named_scenes_restore_from_database(client):
     assert client.post("/api/settings/player", json={**preferences, "intensity": 99}).status_code == 422
     assert client.post(f"/api/library/{scene['id']}/remove").status_code == 200
     assert client.get("/api/settings/presets").json() == []
+
+
+def test_song_timing_corrections_persist_and_are_bounded(client):
+    preferences = client.get("/api/settings/player").json()
+    preferences["lyricOffsets"] = {"artist|song|200": -3.5}
+    assert client.post("/api/settings/player", json=preferences).status_code == 200
+    assert client.get("/api/settings/player").json()["lyricOffsets"] == {"artist|song|200": -3.5}
+    assert (
+        client.post("/api/settings/player", json={**preferences, "lyricOffsets": {"bad": -121}}).status_code
+        == 422
+    )

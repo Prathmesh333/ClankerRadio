@@ -67,3 +67,17 @@ def test_closed_session_does_not_hide_music_and_title_filter_is_retained():
             raise RuntimeError("Tab closed")
 
     assert read([Closed(), session("Wanted"), session("Other")], title="Wanted")["title"] == "Wanted"
+
+
+def test_playback_speed_applies_to_elapsed_windows_timeline():
+    sample = session()
+    sample.get_playback_info = lambda: SimpleNamespace(playback_status=4, playback_rate=0.5)
+    sample.get_timeline_properties = lambda: SimpleNamespace(
+        start_time=timedelta(),
+        end_time=timedelta(seconds=200),
+        position=timedelta(seconds=10),
+        last_updated_time=datetime.now(UTC) - timedelta(seconds=4),
+    )
+    result = read([sample])
+    assert 11.9 <= result["position"] < 12.1
+    assert result["playbackRate"] == 0.5 and result["sampledAtMs"] > 0

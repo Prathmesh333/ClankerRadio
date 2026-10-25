@@ -194,6 +194,30 @@ try:
         page.get_by_role("button", name="Apply lyrics", exact=True).click()
         expect(page.locator(".provider-player iframe")).to_have_count(0)
         expect(page.locator(".kinetic-lyrics p")).to_have_text("Chrome chorus", timeout=15000)
+        page.get_by_role("button", name="Hide lyric overlay", exact=True).click()
+        expect(page.locator(".kinetic-lyrics")).to_have_count(0)
+        page.get_by_role("button", name="Show lyric overlay", exact=True).click()
+        expect(page.locator(".kinetic-lyrics p")).to_have_text("Chrome chorus")
+        session.update(playing=False, position=12)
+        expect(page.locator(".lyric-clock")).to_contain_text("0:12", timeout=10000)
+        page.locator(".lyric-sync-menu > summary").click()
+        page.get_by_label("Lyric timing offset (seconds)").fill("-5")
+        expect(page.locator(".kinetic-lyrics p")).to_have_text("Chrome intro", timeout=10000)
+        page.wait_for_function(
+            "async()=>Object.values((await(await fetch('/api/settings/player')).json())"
+            ".lyricOffsets).includes(-5)"
+        )
+        session.update(title="Other recording", position=12)
+        expect(page.locator(".kinetic-lyrics p")).to_have_text("Chrome chorus", timeout=10000)
+        session.update(title="First browser song", position=12)
+        expect(page.locator(".kinetic-lyrics p")).to_have_text("Chrome intro", timeout=10000)
+        page.get_by_role("button", name="Reset song timing", exact=True).click()
+        expect(page.locator(".kinetic-lyrics p")).to_have_text("Chrome chorus")
+        page.get_by_label("Line being sung now").select_option("0")
+        page.get_by_role("button", name="Match line to now", exact=True).click()
+        expect(page.locator(".kinetic-lyrics p")).to_have_text("Chrome intro")
+        page.get_by_role("button", name="Reset song timing", exact=True).click()
+        page.locator(".lyric-sync-menu > summary").click()
         session.update(position=2, playing=False)
         expect(page.locator(".kinetic-lyrics p")).to_have_text("Chrome intro", timeout=10000)
         session.update(title="Second browser song", position=12, playing=True)
@@ -250,7 +274,11 @@ try:
                 video.onerror=()=>reject(new Error('WebM bytes='+blob.size+' header='+bytes.slice(0,16)
                   +' code='+video.error?.code+' '+video.error?.message));
               });
-              await video.play();await new Promise(resolve=>setTimeout(resolve,300));
+              await video.play();
+              // Recording audio can precede the first video frame on a software GPU.
+              await new Promise(resolve=>{video.addEventListener('seeked',resolve,{once:true});
+                video.currentTime=1.5;});
+              await new Promise(resolve=>setTimeout(resolve,100));
               const canvas=document.createElement('canvas');canvas.width=64;canvas.height=64;
               const ctx=canvas.getContext('2d');ctx.drawImage(video,0,0,64,64);video.pause();
               const pixels=ctx.getImageData(16,16,32,32).data;let sum=0,maximum=0;

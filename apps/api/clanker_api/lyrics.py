@@ -115,6 +115,12 @@ def lookup(url, title, artist, duration, bucket):
             else "plain"
             if item.get("plainLyrics")
             else "missing",
+            "duration": item.get("duration") or 0,
+            "timingWarning": (
+                "Recording lengths differ; use Sync lyrics if the video has a different intro."
+                if duration and abs(float(item.get("duration") or 0) - duration) > 4
+                else ""
+            ),
             "title": item.get("trackName"),
             "artist": item.get("artistName"),
             "lyrics": item.get("syncedLyrics") or item.get("plainLyrics") or "",

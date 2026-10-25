@@ -1,4 +1,9 @@
 "use client";
+import {
+  LyricPlaybackClock,
+  lyricTimingKey,
+  savedLyricOffset,
+} from "../lib/lyric-clock";
 import type { DesktopBridge } from "../lib/desktop";
 import { LocalPlayback } from "./local-playback";
 import { SavedMusicLibrary } from "./saved-music";
@@ -141,7 +146,18 @@ export function ExternalMusic({
   const providerTime = useRef(0);
 
   const [lineSeconds, setLineSeconds] = useState(4);
-  const [offset, setOffset] = useState(0);
+  const timingKey = lyricTimingKey(track);
+  const offset = preferences.lyricOffsets[timingKey] ?? 0;
+  const setOffset = (value: number) =>
+    onPreferences({
+      lyricOffsets: savedLyricOffset(
+        preferences.lyricOffsets,
+        timingKey,
+        value,
+      ),
+    });
+  const sessionClock = useRef(new LyricPlaybackClock());
+  const [alignLine, setAlignLine] = useState(0);
   const [time, setTime] = useState(0);
   const [running, setRunning] = useState(false);
   const [synced, setSynced] = useState(false);
@@ -229,7 +245,11 @@ export function ExternalMusic({
   }, [editing]);
   useEffect(() => {
     const timer = setInterval(() => {
-      if (nativePlayer || browserPlayback) return;
+      if (nativePlayer || browserPlayback) {
+        const position = sessionClock.current.read();
+        if (position !== null) setTime(position);
+        return;
+      }
       if (source?.provider === "YouTube" && yt.current) {
         const position = yt.current.getCurrentTime();
         if (Number.isFinite(position)) setTime(position);
@@ -237,7 +257,6 @@ export function ExternalMusic({
         const id = video.video_id;
         if (id && id !== currentVideo.current) {
           if (currentVideo.current) {
-            setOffset(0);
             setAutomatic(true);
             setLyrics("");
           }
@@ -312,7 +331,11 @@ export function ExternalMusic({
           if (controller.signal.aborted) return;
           resolvedTitle.current = data.title ?? "";
           setLyrics(data.lyrics ?? "");
-          setLyricStatus(data.message ?? data.status);
+          setLyricStatus(
+            [data.message ?? data.status, data.timingWarning]
+              .filter(Boolean)
+              .join(" · "),
+          );
           setLyricSource(data.source ?? "");
         })
         .catch((error) => {
@@ -358,7 +381,6 @@ export function ExternalMusic({
                   if (currentVideo.current) {
                     setLyrics("");
                     setAutomatic(true);
-                    setOffset(0);
                   }
                   currentVideo.current = uri;
                   setTrack({
@@ -391,7 +413,6 @@ export function ExternalMusic({
               if (currentVideo.current) {
                 setAutomatic(true);
                 setLyrics("");
-                setOffset(0);
               }
               currentVideo.current = sound.permalink_url;
               setTrack({
@@ -428,6 +449,7 @@ export function ExternalMusic({
     )
       return;
     const controller = new AbortController();
+    const clock = sessionClock.current;
     let busy = false;
     const timer = setInterval(() => {
       if (busy) return;
@@ -444,6 +466,7 @@ export function ExternalMusic({
             setSessionStatus(
               data.message || "Waiting for the browser’s current song…",
             );
+            sessionClock.current.clear();
             if (browserPlayback) {
               setLyrics("");
               if (currentVideo.current)
@@ -459,14 +482,14 @@ export function ExternalMusic({
           }
           setSessionStatus(`${data.sourceApp || "Windows"} · ${data.title}`);
           setSynced(true);
+          sessionClock.current.update(data);
           providerTime.current = data.position;
-          setTime(data.position);
+          setTime(sessionClock.current.read() ?? data.position);
           const id = `${data.artist}:${data.title}`;
           if (id !== currentVideo.current) {
             if (currentVideo.current) {
               setAutomatic(true);
               setLyrics("");
-              setOffset(0);
             }
             currentVideo.current = id;
             setTrack({
@@ -480,16 +503,18 @@ export function ExternalMusic({
         .catch(() => {
           if (!controller.signal.aborted) {
             setSynced(false);
+            sessionClock.current.clear();
             setSessionStatus("Could not read Windows now-playing metadata.");
           }
         })
         .finally(() => {
           busy = false;
         });
-    }, 1000);
+    }, 500);
     return () => {
       clearInterval(timer);
       controller.abort();
+      clock.clear();
     };
   }, [source, nativePlayer, browserPlayback]);
   useEffect(() => {
@@ -821,6 +846,92 @@ export function ExternalMusic({
               {reactive ? "Disconnect audio" : "Share tab audio"}
             </button>
           )}
+          <button
+            type="button"
+            aria-pressed={showLyrics}
+            aria-label={
+              showLyrics ? "Hide lyric overlay" : "Show lyric overlay"
+            }
+            onClick={() => setShowLyrics(!showLyrics)}
+          >
+            Lyrics {showLyrics ? "on" : "off"}
+          </button>
+          <details className="lyric-sync-menu">
+            <summary>Sync lyrics</summary>
+            <div className="lyric-sync-popup">
+              <p>Lyrics ahead? Delay them. Lyrics behind? Advance them.</p>
+              <div className="lyric-sync-actions">
+                <button
+                  type="button"
+                  disabled={!timingKey}
+                  onClick={() => setOffset(offset - 1)}
+                >
+                  Delay lyrics 1s
+                </button>
+                <button
+                  type="button"
+                  disabled={!timingKey}
+                  onClick={() => setOffset(offset + 1)}
+                >
+                  Advance lyrics 1s
+                </button>
+              </div>
+              <label>
+                Lyric timing offset (seconds)
+                <input
+                  type="number"
+                  min="-120"
+                  max="120"
+                  step="0.25"
+                  value={offset}
+                  disabled={!timingKey}
+                  onChange={(event) =>
+                    setOffset(Number(event.target.value) || 0)
+                  }
+                />
+              </label>
+              <p>
+                Negative values delay the lyrics. Saved separately for each
+                song.
+              </p>
+              <label>
+                Line being sung now
+                <select
+                  value={Math.min(
+                    alignLine,
+                    Math.max(0, parsed.cues.length - 1),
+                  )}
+                  disabled={!parsed.cues.length}
+                  onChange={(event) => setAlignLine(Number(event.target.value))}
+                >
+                  {parsed.cues.map((line, i) => (
+                    <option key={i} value={i}>
+                      {line.text}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <button
+                type="button"
+                disabled={!parsed.cues.length || !timingKey}
+                onClick={() =>
+                  setOffset(
+                    parsed.cues[Math.min(alignLine, parsed.cues.length - 1)]
+                      .time - time,
+                  )
+                }
+              >
+                Match line to now
+              </button>
+              <button
+                type="button"
+                disabled={!timingKey}
+                onClick={() => setOffset(0)}
+              >
+                Reset song timing
+              </button>
+            </div>
+          </details>
           <EffectsMenu
             beatSync={preferences.beatSync}
             onBeatSync={(beatSync) => onPreferences({ beatSync })}
@@ -905,9 +1016,21 @@ export function ExternalMusic({
               </button>
             </>
           )}
-          <button onClick={() => setOffset(offset - 0.5)}>−0.5s</button>
+          <button
+            aria-label="Delay lyrics half a second"
+            disabled={!timingKey}
+            onClick={() => setOffset(offset - 0.5)}
+          >
+            Delay 0.5s
+          </button>
           <span>{offset.toFixed(1)}s</span>
-          <button onClick={() => setOffset(offset + 0.5)}>+0.5s</button>
+          <button
+            aria-label="Advance lyrics half a second"
+            disabled={!timingKey}
+            onClick={() => setOffset(offset + 0.5)}
+          >
+            Advance 0.5s
+          </button>
         </div>
         {error && !editing && (
           <p role="alert" className="source-error">

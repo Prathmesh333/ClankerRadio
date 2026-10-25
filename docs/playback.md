@@ -64,3 +64,9 @@ On Windows, automatic computer-output capture uses SoundCard/WASAPI and sends PC
 Spectrum settings include individual edges, top + bottom, left + right, all four sides, or a custom position with horizontal and vertical sliders. Mirror spectrum reflects frequency bars around the center. Bar height and spectrum width control the size without changing the music or other visual effects.
 
 **Show lyrics** in external Effects or Link & lyrics hides or restores the lyric overlay without stopping music, visualizers, or lyric timing. Caption styles use warm colors, dark character outlines, and spaced words for legibility against bright visuals.
+
+### Hiding and aligning lyrics
+
+**Lyrics on/off** beside Effects hides or restores the overlay while playback continues. The existing Show lyrics checkboxes remain available. **Sync lyrics** opens timing controls. If lyrics appear before the vocals, choose **Delay lyrics 1s** or enter a negative timing offset; positive values advance late lyrics. Select the line you hear and press **Match line to now** to align that line’s start to the current player time. **Reset song timing** clears the correction for that recording. Corrections are saved per title/artist/duration, so a video edit can have a different offset from an album recording.
+
+Browser clock interpolation follows the exposed playback speed and stops when paused. Music videos can still contain different intros, cuts or interludes from LRCLIB’s recording; a constant timing correction cannot repair a version with several different cuts. The app flags a material duration difference. Use a matching audio version for the most consistent lyric timing.
